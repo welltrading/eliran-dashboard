@@ -1,0 +1,120 @@
+import "server-only";
+
+export type AirtableLinkedRecord = string[];
+
+export type RawCustomerFields = {
+  "שם לקוח"?: string;
+  טלפון?: string;
+  אימייל?: string;
+  כתובת?: string;
+};
+
+export type RawInstallerFields = {
+  "שם מתקין"?: string;
+  טלפון?: string;
+  פעיל?: boolean;
+};
+
+export type RawOrderFields = {
+  fldDrP4MqsxV6EtJd?: unknown;
+  fldZEobEKEQtMtoGV?: unknown;
+  fldk7OdnVLITahJxd?: unknown;
+  fld5bh56XRJGJhrsz?: unknown;
+  flduurO6CcPQx6oya?: unknown;
+  fldwvbnGd8e3PAU7d?: unknown;
+  flde2no9Qoof141vN?: unknown;
+  flddZQjojnGZeZ5By?: unknown;
+  fldcsD7TEjjYB6kz3?: unknown;
+  fldoXRciteMB9WdfP?: unknown;
+  fld9OEARVSvYDuEdR?: unknown;
+  fldFRK1Kz26jE99xR?: unknown;
+  fldIJzxGrwPaDNACs?: unknown;
+  fldws1tElgJlhMLR7?: unknown;
+};
+
+export type RawOrderLineFields = {
+  fldPxGffqlrfcYZIM?: unknown;
+  fldnk3IiyNeTTGqsa?: unknown;
+  fldQMHdPJ7OuF9QcG?: unknown;
+  fldD2A7OjLTJP7qRj?: unknown;
+  fldmfjeDAJIls5oWG?: unknown;
+  fldhrAvwCw1grQHNI?: unknown;
+  fldp4FofbLftwSYZ7?: unknown;
+  fldxUifeVCCQaXNhV?: unknown;
+  fldr1hhLfgIDGxhHS?: unknown;
+  fldhCTBK9KWOQgZrg?: unknown;
+};
+
+export type RawInventoryFields = {
+  fldYboj1U8ZHJK6aq?: unknown;
+  fldIg7KsaGnNm9Tvz?: unknown;
+  fldHUiTkn1TFdW9n4?: unknown;
+  fldmKrx7PBJjv0zUH?: unknown;
+  fldr4VIQAnulf5eIv?: unknown;
+  fldFr3TUKbKCkvoW5?: unknown;
+  fldMOqeUQ4Lx1J5ct?: unknown;
+  fldhRTAjW1acQWkyQ?: unknown;
+  fld5uQzsRkmiQOthD?: unknown;
+};
+
+export type RawInventoryMovementFields = {
+  fldoQUdwvZUId6wmd?: unknown;
+  fld2R7ECUE1z42DJw?: unknown;
+  fldtSkCxX3blv1xqa?: unknown;
+  fldOl1NyruRJP2vzN?: unknown;
+  fldXNpU6Ga5KX9vic?: unknown;
+  fldseUfuzw9ktKuRy?: unknown;
+  fldRVE4yaMKwT5e1S?: unknown;
+  fldY3lYOKJbW1csjM?: unknown;
+  fldQ8umCODTY80hBU?: unknown;
+};
+
+export type RawProductFields = {
+  fldhnlxw7qtgFIHUc?: unknown;
+  flddMBY4tu0y0TR1t?: unknown;
+  fld7oDVwD2TD3960b?: unknown;
+  fldldbeNRfgk6jrYA?: unknown;
+  fldygZqbnX3OknW9b?: unknown;
+  fldsl5TQHXUfg3EEH?: unknown;
+  fldZQxtBcT4c324xc?: unknown;
+  fldUdDB11R6kXBSPn?: unknown;
+  fldrwR6l60DWTwQhF?: unknown;
+  fldRlIlTLpDDR7cBl?: unknown;
+};
+
+export type RawTaskFields = {
+  כותרת?: string;
+  סטטוס?: string;
+  "תאריך מתוכנן"?: string;
+  מתקין?: AirtableLinkedRecord;
+  לקוח?: AirtableLinkedRecord;
+  הזמנה?: AirtableLinkedRecord;
+};
+
+export type RawQuoteFields = {
+  fldFfYboIrcFejtHN?: unknown;
+  fld07wwSMqvzYk0s4?: unknown;
+  fldPYvrQHENHZC8pJ?: unknown;
+  fldf9PSV2gFZxXsxY?: unknown;
+  fldN4EILKJZND3FOf?: unknown;
+  fldOY3RLPblIPoz60?: unknown;
+  fldHnLVvPoqT0VHvA?: unknown;
+  fldF5hky2jB0vs5GY?: unknown;
+  fldrtuHdHK8SEKLfM?: unknown;
+  fldzlKcHkLftZVxFM?: unknown;
+  fldgzZ3UQE6FOil0T?: unknown;
+  fldv6P5NJkh207aJR?: unknown;
+  fldPt89KYMnfPHc1X?: unknown;
+  fldzFSTLmY8eMk2zF?: unknown;
+  fldAD8QmPrnCbZhu2?: unknown;
+  fldcS4I85kjhbKZbJ?: unknown;
+  fldGnHde4OSCi00ue?: unknown;
+  fldtxUhlZi7FeSJX3?: unknown;
+  fld8TK2mavUQZ39Q2?: unknown;
+  fldtuIXm9M6hJThCV?: unknown;
+  fldGmiTEukzdMMRLk?: unknown;
+  fldQWyr3BZl4bxTBb?: unknown;
+  fldRwScbjjUrYde6X?: unknown;
+  fldc6kFepSAl5rLw4?: unknown;
+  fldKNXfM18R4OtfGk?: unknown;
+};
