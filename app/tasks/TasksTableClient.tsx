@@ -5,6 +5,7 @@ import type { Task, TaskStatus } from "@/lib/types";
 
 type DateFilter = "הכל" | "היום" | "מחר" | "השבוע" | "ללא תאריך";
 type ScheduleSentFilter = "הכל" | "נשלח" | "לא נשלח" | "שגיאה";
+type ScheduleView = "היום" | "מחר" | "השבוע" | "ללא תאריך";
 type StatusFilter = "הכל" | TaskStatus;
 
 type TasksTableClientProps = {
@@ -18,6 +19,8 @@ const timeWindowOrder = new Map([
   ["16-19", 3],
 ]);
 
+const scheduleViews: ScheduleView[] = ["היום", "מחר", "השבוע", "ללא תאריך"];
+
 function formatDate(value: string | null) {
   if (!value) {
     return "-";
@@ -30,6 +33,20 @@ function formatDate(value: string | null) {
   }
 
   return new Intl.DateTimeFormat("he-IL").format(date);
+}
+
+function formatScheduleDate(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("he-IL", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date);
 }
 
 function dateKey(value: Date) {
@@ -97,6 +114,13 @@ function compareTaskSchedule(a: Task, b: Task) {
     return aWindow - bWindow;
   }
 
+  const aInstallerOrCustomer = a.installerName ?? a.customerName ?? "";
+  const bInstallerOrCustomer = b.installerName ?? b.customerName ?? "";
+
+  if (aInstallerOrCustomer !== bInstallerOrCustomer) {
+    return aInstallerOrCustomer.localeCompare(bInstallerOrCustomer, "he");
+  }
+
   return a.title.localeCompare(b.title, "he");
 }
 
@@ -143,6 +167,29 @@ function dateMatches(task: Task, filter: DateFilter) {
   return currentTaskDate >= startOfWeek(new Date()) && currentTaskDate <= endOfWeek(new Date());
 }
 
+function scheduleViewMatches(task: Task, view: ScheduleView) {
+  const currentTaskDate = taskDateKey(task);
+  const today = dateKey(new Date());
+
+  if (view === "ללא תאריך") {
+    return !currentTaskDate;
+  }
+
+  if (!currentTaskDate) {
+    return false;
+  }
+
+  if (view === "היום") {
+    return currentTaskDate === today;
+  }
+
+  if (view === "מחר") {
+    return currentTaskDate === dateKey(addDays(new Date(), 1));
+  }
+
+  return currentTaskDate >= startOfWeek(new Date()) && currentTaskDate <= endOfWeek(new Date());
+}
+
 function statusClass(task: Task) {
   if (task.status === "בוטל") {
     return "data-table__row--muted";
@@ -179,10 +226,25 @@ function scheduleLabel(task: Task) {
   return task.scheduleSendStatus ?? "לא נשלח";
 }
 
+function scheduleCardClass(task: Task, view: ScheduleView) {
+  const classes = ["daily-schedule__task"];
+
+  if (view === "ללא תאריך" || !task.installerName || !task.timeWindow) {
+    classes.push("daily-schedule__task--warning");
+  }
+
+  if (task.status === "בוטל") {
+    classes.push("daily-schedule__task--muted");
+  }
+
+  return classes.join(" ");
+}
+
 export function TasksTableClient({
   tasks,
   airtableTasksTableUrl,
 }: TasksTableClientProps) {
+  const [scheduleView, setScheduleView] = useState<ScheduleView>("היום");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("הכל");
   const [installer, setInstaller] = useState("הכל");
@@ -200,6 +262,37 @@ export function TasksTableClient({
       new Set(tasks.map((task) => task.installerName).filter((value): value is string => Boolean(value))),
     ).sort((a, b) => a.localeCompare(b, "he"));
   }, [tasks]);
+
+  const scheduleTasks = useMemo(() => {
+    return tasks
+      .filter((task) => scheduleViewMatches(task, scheduleView))
+      .sort(compareTaskSchedule);
+  }, [scheduleView, tasks]);
+
+  const scheduleGroups = useMemo(() => {
+    if (scheduleView !== "השבוע") {
+      return [
+        {
+          label: scheduleView,
+          tasks: scheduleTasks,
+          warning: scheduleView === "ללא תאריך",
+        },
+      ];
+    }
+
+    const grouped = new Map<string, Task[]>();
+
+    scheduleTasks.forEach((task) => {
+      const key = taskDateKey(task) ?? "ללא תאריך";
+      grouped.set(key, [...(grouped.get(key) ?? []), task]);
+    });
+
+    return Array.from(grouped, ([key, groupTasks]) => ({
+      label: key === "ללא תאריך" ? key : formatScheduleDate(key),
+      tasks: groupTasks,
+      warning: false,
+    }));
+  }, [scheduleTasks, scheduleView]);
 
   const filteredTasks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -276,8 +369,92 @@ export function TasksTableClient({
       </tr>
     ));
 
+  const renderScheduleTask = (task: Task) => (
+    <article className={scheduleCardClass(task, scheduleView)} key={task.id}>
+      <div className="daily-schedule__time">
+        {task.timeWindow ? (
+          <strong>{task.timeWindow}</strong>
+        ) : (
+          <span className="badge badge--warning">ללא חלון זמן</span>
+        )}
+      </div>
+
+      <div className="daily-schedule__main">
+        <div>
+          <h3>{task.title || "-"}</h3>
+          <p>{task.taskType ?? "ללא סוג משימה"}</p>
+        </div>
+        <div className="daily-schedule__badges">
+          <span className={task.status === "בוטל" ? "badge" : "badge badge--success"}>
+            {task.status}
+          </span>
+          <span className={scheduleBadgeClass(task)}>{scheduleLabel(task)}</span>
+          {!task.installerName && <span className="badge badge--warning">ללא מתקין</span>}
+        </div>
+      </div>
+
+      <div className="daily-schedule__details">
+        <span>{task.installerName ?? "ללא מתקין"}</span>
+        <span>{task.customerName ?? "-"}</span>
+        <span>{task.phone ?? "-"}</span>
+        <span>{task.address ?? "-"}</span>
+      </div>
+
+      <a
+        href={`${airtableTasksTableUrl}/${task.id}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        פתח משימה
+      </a>
+    </article>
+  );
+
   return (
     <>
+      <section className="daily-schedule" aria-label="לו״ז יומי">
+        <div className="daily-schedule__header">
+          <div>
+            <h2>לו״ז יומי</h2>
+            <p>{scheduleTasks.length} משימות</p>
+          </div>
+          <div className="daily-schedule__tabs" role="tablist" aria-label="טווח לו״ז">
+            {scheduleViews.map((view) => (
+              <button
+                className={`daily-schedule__tab${
+                  scheduleView === view ? " daily-schedule__tab--active" : ""
+                }`}
+                key={view}
+                type="button"
+                onClick={() => setScheduleView(view)}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {scheduleTasks.length > 0 ? (
+          <div className="daily-schedule__groups">
+            {scheduleGroups.map((group) => (
+              <div
+                className={`daily-schedule__group${
+                  group.warning ? " daily-schedule__group--warning" : ""
+                }`}
+                key={group.label}
+              >
+                <h3>{group.label}</h3>
+                <div className="daily-schedule__list">
+                  {group.tasks.map(renderScheduleTask)}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="daily-schedule__empty">אין משימות להצגה בטווח הזה.</div>
+        )}
+      </section>
+
       <div className="filters-bar tasks-filters" aria-label="סינון משימות">
         <label className="filter-field filter-field--search">
           <span className="filter-label">חיפוש</span>

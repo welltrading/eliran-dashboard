@@ -372,6 +372,153 @@ textarea {
   grid-template-columns: minmax(240px, 1.2fr) 140px 180px 150px 150px auto;
 }
 
+.daily-schedule {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.daily-schedule__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.daily-schedule__header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.daily-schedule__header p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.daily-schedule__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.daily-schedule__tab {
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 7px 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.daily-schedule__tab--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.daily-schedule__groups,
+.daily-schedule__list {
+  display: grid;
+  gap: 10px;
+}
+
+.daily-schedule__group {
+  display: grid;
+  gap: 8px;
+}
+
+.daily-schedule__group > h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.daily-schedule__group--warning > h3 {
+  color: var(--warning);
+}
+
+.daily-schedule__task {
+  display: grid;
+  grid-template-columns: 92px minmax(240px, 1.2fr) minmax(300px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 74px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.daily-schedule__task--warning {
+  border-color: rgba(161, 98, 7, 0.34);
+  background: #fffbeb;
+}
+
+.daily-schedule__task--muted {
+  background: #f8fafc;
+  color: var(--muted);
+}
+
+.daily-schedule__time strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 5px 9px;
+  font-size: 14px;
+}
+
+.daily-schedule__main {
+  display: grid;
+  gap: 8px;
+}
+
+.daily-schedule__main h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.daily-schedule__main p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.daily-schedule__badges,
+.daily-schedule__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.daily-schedule__details span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.daily-schedule__task > a {
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.daily-schedule__empty {
+  min-height: 70px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 750;
+}
+
 .filter-field {
   display: grid;
   gap: 6px;
@@ -801,6 +948,15 @@ textarea {
     grid-template-columns: 1fr 1fr;
   }
 
+  .daily-schedule__task {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-schedule__header {
+    align-items: start;
+    flex-direction: column;
+  }
+
   .filter-field--search,
   .table-summary {
     grid-column: 1 / -1;
@@ -849,7 +1005,8 @@ textarea {
   .inventory-summary,
   .tasks-summary,
   .validation-grid,
-  .exception-item {
+  .exception-item,
+  .daily-schedule__task {
     grid-template-columns: 1fr;
   }
 
