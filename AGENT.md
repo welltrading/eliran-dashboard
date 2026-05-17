@@ -15,6 +15,7 @@ Local server: http://localhost:3001
 - Reuse existing patterns.
 - Run `npm run build` after meaningful changes.
 - Do not commit or push without approval.
+- For commits, follow `docs/codex-commit-workflow.md`.
 - Keep this file under 200 lines.
 
 ## Airtable Safety
