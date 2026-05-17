@@ -47,25 +47,32 @@ export type RawOrderLineFields = {
 
 export type RawInventoryFields = {
   fldYboj1U8ZHJK6aq?: unknown;
-  fldIg7KsaGnNm9Tvz?: unknown;
   fldHUiTkn1TFdW9n4?: unknown;
+  fldexSWLxpnh3pP5k?: unknown;
+  fldj2pdrmiHYKNwAI?: unknown;
   fldmKrx7PBJjv0zUH?: unknown;
   fldr4VIQAnulf5eIv?: unknown;
-  fldFr3TUKbKCkvoW5?: unknown;
-  fldMOqeUQ4Lx1J5ct?: unknown;
-  fldhRTAjW1acQWkyQ?: unknown;
-  fld5uQzsRkmiQOthD?: unknown;
+  fldWBgO3Bg3qi65dg?: unknown;
+  fldgrSdEuxPne8fUH?: unknown;
+  fld6KM7lmkfbmeGOe?: unknown;
 };
 
 export type RawInventoryMovementFields = {
+  fldKRpqK9M9M0oODe?: unknown;
+  fldG4ahYiyKWCGvoJ?: unknown;
+  fldXNpU6Ga5KX9vic?: unknown;
+  fldseUfuzw9ktKuRy?: unknown;
+  fldRVE4yaMKwT5e1S?: unknown;
+  fld4YI5VbouZBvKb3?: unknown;
+  fld733WyctwcweOC6?: unknown;
+  fldFqsW6nY2Q5Guvd?: unknown;
+  fldtsmbAgTKPc7kUj?: unknown;
+  fldModhBcaJqCP6na?: unknown;
+  fldY3lYOKJbW1csjM?: unknown;
   fldoQUdwvZUId6wmd?: unknown;
   fld2R7ECUE1z42DJw?: unknown;
   fldtSkCxX3blv1xqa?: unknown;
   fldOl1NyruRJP2vzN?: unknown;
-  fldXNpU6Ga5KX9vic?: unknown;
-  fldseUfuzw9ktKuRy?: unknown;
-  fldRVE4yaMKwT5e1S?: unknown;
-  fldY3lYOKJbW1csjM?: unknown;
   fldQ8umCODTY80hBU?: unknown;
 };
 

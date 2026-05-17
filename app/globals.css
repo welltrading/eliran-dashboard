@@ -178,11 +178,25 @@ textarea {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.inventory-summary {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
 .card {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.validation-card {
+  margin-bottom: 16px;
+}
+
+.validation-card--danger {
+  border-color: rgba(185, 28, 28, 0.34);
+  background: #fff7f7;
 }
 
 .card__body {
@@ -247,6 +261,32 @@ textarea {
   margin: 0;
   color: var(--muted);
   line-height: 1.7;
+}
+
+.validation-list {
+  display: grid;
+  gap: 12px;
+}
+
+.validation-list h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.validation-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.validation-grid span {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 9px 11px;
+  font-size: 13px;
+  font-weight: 750;
 }
 
 .filters-bar {
@@ -649,6 +689,11 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .inventory-summary,
+  .validation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .readonly-grid,
   .form-grid,
   .draft-line,
@@ -677,7 +722,9 @@ textarea {
 
   .sidebar__nav,
   .filters-bar,
-  .stats-grid {
+  .stats-grid,
+  .inventory-summary,
+  .validation-grid {
     grid-template-columns: 1fr;
   }
 

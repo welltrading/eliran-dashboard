@@ -1,5 +1,5 @@
 import "server-only";
-import type { OrderStatus, QuoteType, StockStatus, TaskStatus } from "@/lib/types";
+import type { OrderStatus, QuoteType, TaskStatus } from "@/lib/types";
 
 const orderStatuses: OrderStatus[] = [
   "חדשה",
@@ -18,7 +18,6 @@ const taskStatuses: TaskStatus[] = [
   "בוטלה",
 ];
 
-const stockStatuses: StockStatus[] = ["תקין", "נמוך", "אזל"];
 const quoteTypes: QuoteType[] = ["סטנדרטי", "ייצור אישי"];
 
 export function text(value: unknown) {
@@ -50,10 +49,6 @@ export function orderStatus(value: unknown): OrderStatus {
 
 export function taskStatus(value: unknown): TaskStatus {
   return taskStatuses.includes(value as TaskStatus) ? (value as TaskStatus) : "חדשה";
-}
-
-export function stockStatus(value: unknown): StockStatus {
-  return stockStatuses.includes(value as StockStatus) ? (value as StockStatus) : "תקין";
 }
 
 export function quoteType(value: unknown): QuoteType {

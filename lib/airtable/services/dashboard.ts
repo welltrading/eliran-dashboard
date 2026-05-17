@@ -33,7 +33,7 @@ export async function getDashboardSummary(): Promise<DashboardStat[]> {
   );
   const todayTasks = tasks.filter((task) => isToday(task.scheduledDate));
   const lowStockItems = inventory.filter(
-    (item) => item.status === "נמוך" || item.status === "אזל",
+    (item) => item.status === "low" || item.status === "out" || item.status === "negative",
   );
 
   return [

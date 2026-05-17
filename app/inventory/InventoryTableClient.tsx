@@ -3,40 +3,32 @@
 import { useMemo, useState } from "react";
 import type { StockStatus } from "@/lib/types";
 
-type LocationFilter = "הכל" | "חנות" | "מחסן";
-
 export type InventoryTableItem = {
   productName: string;
+  productSku: string | null;
   location: string;
   availableQuantity: number;
   status: StockStatus;
-  updatedAt: string | null;
+  displayForMoran: string | null;
 };
 
 type InventoryTableClientProps = {
   items: InventoryTableItem[];
 };
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("he-IL").format(date);
-}
+const statusLabels: Record<StockStatus, string> = {
+  ok: "תקין",
+  low: "מלאי נמוך",
+  out: "אזל",
+  negative: "מלאי שלילי",
+};
 
 function statusClass(status: StockStatus) {
-  if (status === "אזל") {
+  if (status === "negative" || status === "out") {
     return "badge badge--danger";
   }
 
-  if (status === "נמוך") {
+  if (status === "low") {
     return "badge badge--warning";
   }
 
@@ -44,29 +36,71 @@ function statusClass(status: StockStatus) {
 }
 
 export function InventoryTableClient({ items }: InventoryTableClientProps) {
-  const [location, setLocation] = useState<LocationFilter>("הכל");
+  const locations = useMemo(
+    () =>
+      Array.from(new Set(items.map((item) => item.location).filter((value) => value.length > 0))),
+    [items],
+  );
+  const [search, setSearch] = useState("");
+  const [location, setLocation] = useState("הכל");
+  const [status, setStatus] = useState<StockStatus | "הכל">("הכל");
 
   const filteredItems = useMemo(() => {
-    if (location === "הכל") {
-      return items;
-    }
+    const normalizedSearch = search.trim().toLowerCase();
 
-    return items.filter((item) => item.location === location);
-  }, [items, location]);
+    return items.filter((item) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        item.productName.toLowerCase().includes(normalizedSearch) ||
+        (item.productSku ?? "").toLowerCase().includes(normalizedSearch);
+      const matchesLocation = location === "הכל" || item.location === location;
+      const matchesStatus = status === "הכל" || item.status === status;
+
+      return matchesSearch && matchesLocation && matchesStatus;
+    });
+  }, [items, location, search, status]);
 
   return (
     <>
       <div className="filters-bar" aria-label="סינון מלאי לפי מיקום">
+        <label className="filter-field filter-field--search">
+          <span className="filter-label">חיפוש מוצר</span>
+          <input
+            className="filter-input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="שם מוצר או מקט"
+          />
+        </label>
+
         <label className="filter-field">
           <span className="filter-label">מיקום</span>
           <select
             className="filter-select"
             value={location}
-            onChange={(event) => setLocation(event.target.value as LocationFilter)}
+            onChange={(event) => setLocation(event.target.value)}
           >
             <option value="הכל">הכל</option>
-            <option value="חנות">חנות</option>
-            <option value="מחסן">מחסן</option>
+            {locations.map((itemLocation) => (
+              <option key={itemLocation} value={itemLocation}>
+                {itemLocation}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="filter-field">
+          <span className="filter-label">סטטוס מלאי</span>
+          <select
+            className="filter-select"
+            value={status}
+            onChange={(event) => setStatus(event.target.value as StockStatus | "הכל")}
+          >
+            <option value="הכל">הכל</option>
+            <option value="ok">תקין</option>
+            <option value="low">מלאי נמוך</option>
+            <option value="out">אזל</option>
+            <option value="negative">מלאי שלילי</option>
           </select>
         </label>
 
@@ -81,22 +115,24 @@ export function InventoryTableClient({ items }: InventoryTableClientProps) {
             <thead>
               <tr>
                 <th>מוצר</th>
+                <th>מקט/דגם</th>
                 <th>מיקום</th>
-                <th>כמות זמינה</th>
+                <th>כמות</th>
                 <th>סטטוס מלאי</th>
-                <th>עדכון אחרון</th>
+                <th>תצוגה למורן</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.map((item, index) => (
                 <tr key={`${item.productName || "item"}-${item.location || "location"}-${index}`}>
                   <td>{item.productName || "-"}</td>
+                  <td>{item.productSku ?? "-"}</td>
                   <td>{item.location || "-"}</td>
                   <td>{item.availableQuantity}</td>
                   <td>
-                    <span className={statusClass(item.status)}>{item.status}</span>
+                    <span className={statusClass(item.status)}>{statusLabels[item.status]}</span>
                   </td>
-                  <td>{formatDate(item.updatedAt)}</td>
+                  <td>{item.displayForMoran ?? "-"}</td>
                 </tr>
               ))}
             </tbody>

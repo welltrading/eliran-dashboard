@@ -8,7 +8,7 @@ export type OrderStatus =
 
 export type TaskStatus = "חדשה" | "מתואמת" | "בביצוע" | "הושלמה" | "בוטלה";
 
-export type StockStatus = "תקין" | "נמוך" | "אזל";
+export type StockStatus = "ok" | "low" | "out" | "negative";
 
 export type QuoteType = "סטנדרטי" | "ייצור אישי";
 
@@ -67,22 +67,43 @@ export type OrderLine = {
 export type InventoryItem = {
   id: string;
   productName: string;
+  productSku: string | null;
+  productRecordId: string | null;
   location: string;
   availableQuantity: number;
   status: StockStatus;
+  displayForMoran: string | null;
   productLocationKey: string | null;
   updatedAt: string | null;
 };
 
 export type InventoryMovement = {
   id: string;
+  movementNumber: string | null;
   date: string | null;
-  productName: string;
+  productName: string | null;
+  productRecordIds: string[];
   location: string | null;
   movementType: string;
+  direction: string | null;
   quantity: number;
+  quantityMissing: boolean;
+  calculatedQuantity: number;
+  status: string | null;
+  stockLocationIds: string[];
+  orderLineIds: string[];
   relatedOrder: string | null;
   notes: string | null;
+};
+
+export type InventoryValidation = {
+  inventoryNegativeCount: number;
+  inventoryOutCount: number;
+  inventoryLowCount: number;
+  movementsMissingProduct: number;
+  movementsMissingLocation: number;
+  movementsMissingQuantity: number;
+  movementsMissingStockLocation: number;
 };
 
 export type Product = {
