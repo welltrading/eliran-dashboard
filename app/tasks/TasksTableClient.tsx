@@ -7,6 +7,10 @@ type DateFilter = "הכל" | "היום" | "מחר" | "השבוע" | "ללא תא
 type ScheduleSentFilter = "הכל" | "נשלח" | "לא נשלח" | "שגיאה";
 type ScheduleView = "היום" | "מחר" | "השבוע" | "ללא תאריך";
 type CalendarSlot = "10-13" | "13-16" | "16-19" | "ללא חלון זמן";
+type CalendarSelection = {
+  dayKey: string;
+  slot: CalendarSlot;
+};
 type StatusFilter = "הכל" | TaskStatus;
 
 type TasksTableClientProps = {
@@ -104,6 +108,28 @@ function taskDateKey(task: Task) {
 
 function isKnownTimeWindow(value: string | null) {
   return Boolean(value && timeWindowOrder.has(value));
+}
+
+function shortAddress(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return value.split(",")[0]?.trim() || value;
+}
+
+function taskMatchesCalendarSlot(task: Task, dayKey: string, slot: CalendarSlot) {
+  const sameDay = taskDateKey(task) === dayKey;
+
+  if (!sameDay) {
+    return false;
+  }
+
+  if (slot === "ללא חלון זמן") {
+    return !isKnownTimeWindow(task.timeWindow);
+  }
+
+  return task.timeWindow === slot;
 }
 
 function compareTaskSchedule(a: Task, b: Task) {
@@ -260,14 +286,28 @@ function scheduleCardClass(task: Task, view: ScheduleView) {
 }
 
 function weeklyTaskClass(task: Task) {
-  const classes = ["weekly-calendar__task"];
+  const classes = ["weekly-calendar__detail-card"];
 
-  if (!isKnownTimeWindow(task.timeWindow)) {
-    classes.push("weekly-calendar__task--warning");
+  if (!task.installerName || !isKnownTimeWindow(task.timeWindow)) {
+    classes.push("weekly-calendar__detail-card--warning");
   }
 
   if (task.status === "בוטל") {
-    classes.push("weekly-calendar__task--muted");
+    classes.push("weekly-calendar__detail-card--muted");
+  }
+
+  return classes.join(" ");
+}
+
+function weeklyCompactTaskClass(task: Task) {
+  const classes = ["weekly-calendar__compact-task"];
+
+  if (!task.installerName || !isKnownTimeWindow(task.timeWindow)) {
+    classes.push("weekly-calendar__compact-task--warning");
+  }
+
+  if (task.status === "בוטל") {
+    classes.push("weekly-calendar__compact-task--muted");
   }
 
   return classes.join(" ");
@@ -283,6 +323,8 @@ export function TasksTableClient({
   const [installer, setInstaller] = useState("הכל");
   const [dateFilter, setDateFilter] = useState<DateFilter>("הכל");
   const [scheduleSent, setScheduleSent] = useState<ScheduleSentFilter>("הכל");
+  const [selectedCalendarSlot, setSelectedCalendarSlot] =
+    useState<CalendarSelection | null>(null);
 
   const statuses = useMemo(() => {
     return Array.from(new Set(tasks.map((task) => task.status))).sort((a, b) =>
@@ -352,6 +394,28 @@ export function TasksTableClient({
       })
       .sort(compareTaskSchedule);
   }, [tasks]);
+
+  const firstNonEmptyCalendarSlot = useMemo<CalendarSelection | null>(() => {
+    for (const day of currentWeekDays) {
+      for (const slot of calendarSlots) {
+        if (weeklyTasks.some((task) => taskMatchesCalendarSlot(task, day.dateKey, slot))) {
+          return { dayKey: day.dateKey, slot };
+        }
+      }
+    }
+
+    return null;
+  }, [currentWeekDays, weeklyTasks]);
+
+  const activeCalendarSlot = selectedCalendarSlot ?? firstNonEmptyCalendarSlot;
+  const activeCalendarDay = activeCalendarSlot
+    ? currentWeekDays.find((day) => day.dateKey === activeCalendarSlot.dayKey)
+    : null;
+  const activeCalendarTasks = activeCalendarSlot
+    ? weeklyTasks.filter((task) =>
+        taskMatchesCalendarSlot(task, activeCalendarSlot.dayKey, activeCalendarSlot.slot),
+      )
+    : [];
 
   const filteredTasks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -458,36 +522,45 @@ export function TasksTableClient({
         <span>{task.phone ?? "-"}</span>
         <span>{task.address ?? "-"}</span>
       </div>
-
-      <a
-        href={`${airtableTasksTableUrl}/${task.id}`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        פתח משימה
-      </a>
     </article>
   );
 
-  const renderWeeklyTask = (task: Task) => (
+  const renderWeeklyCompactTask = (task: Task) => (
+    <div className={weeklyCompactTaskClass(task)} key={task.id}>
+      <strong>{task.customerName ?? "-"}</strong>
+      <span>{shortAddress(task.address)}</span>
+      <span>{task.installerName ?? "ללא מתקין"}</span>
+    </div>
+  );
+
+  const renderWeeklyDetailTask = (task: Task) => (
     <article className={weeklyTaskClass(task)} key={task.id}>
-      <div className="weekly-calendar__task-main">
+      <div className="weekly-calendar__detail-main">
         <h3>{task.customerName ?? "-"}</h3>
         <p>{task.title || "-"}</p>
         <span>{task.taskType ?? "ללא סוג משימה"}</span>
       </div>
 
-      <div className="weekly-calendar__task-meta">
+      <div className="weekly-calendar__detail-grid">
         <span>{task.installerName ?? "ללא מתקין"}</span>
         <span>{task.address ?? "-"}</span>
       </div>
 
-      <div className="weekly-calendar__task-badges">
+      <div className="weekly-calendar__detail-badges">
         <span className={task.status === "בוטל" ? "badge" : "badge badge--success"}>
           {task.status}
         </span>
         <span className={scheduleBadgeClass(task)}>{scheduleLabel(task)}</span>
       </div>
+
+      {(!task.installerName || !isKnownTimeWindow(task.timeWindow)) && (
+        <div className="weekly-calendar__detail-warnings">
+          {!task.installerName && <span className="badge badge--warning">ללא מתקין</span>}
+          {!isKnownTimeWindow(task.timeWindow) && (
+            <span className="badge badge--warning">ללא חלון זמן</span>
+          )}
+        </div>
+      )}
 
       <a
         href={`${airtableTasksTableUrl}/${task.id}`}
@@ -500,19 +573,7 @@ export function TasksTableClient({
   );
 
   const tasksForCalendarCell = (dayKey: string, slot: CalendarSlot) => {
-    return weeklyTasks.filter((task) => {
-      const sameDay = taskDateKey(task) === dayKey;
-
-      if (!sameDay) {
-        return false;
-      }
-
-      if (slot === "ללא חלון זמן") {
-        return !isKnownTimeWindow(task.timeWindow);
-      }
-
-      return task.timeWindow === slot;
-    });
+    return weeklyTasks.filter((task) => taskMatchesCalendarSlot(task, dayKey, slot));
   };
 
   return (
@@ -591,16 +652,37 @@ export function TasksTableClient({
                 </div>
                 {currentWeekDays.map((day) => {
                   const cellTasks = tasksForCalendarCell(day.dateKey, slot);
+                  const isSelected =
+                    activeCalendarSlot?.dayKey === day.dateKey &&
+                    activeCalendarSlot.slot === slot;
+                  const visibleTasks = cellTasks.slice(0, 2);
+                  const hiddenTasksCount = cellTasks.length - visibleTasks.length;
 
                   return (
                     <div
                       className={`weekly-calendar__cell${
                         slot === "ללא חלון זמן" ? " weekly-calendar__cell--warning" : ""
+                      }${isSelected ? " weekly-calendar__cell--selected" : ""
                       }`}
                       key={`${day.dateKey}-${slot}`}
                     >
                       {cellTasks.length > 0 ? (
-                        cellTasks.map(renderWeeklyTask)
+                        <button
+                          className="weekly-calendar__cell-button"
+                          type="button"
+                          onClick={() => setSelectedCalendarSlot({ dayKey: day.dateKey, slot })}
+                          aria-pressed={isSelected}
+                          aria-label={`${day.label}, ${formatScheduleDate(day.dateKey)}, ${slot}, ${cellTasks.length} משימות`}
+                        >
+                          <div className="weekly-calendar__compact-list">
+                            {visibleTasks.map(renderWeeklyCompactTask)}
+                          </div>
+                          {hiddenTasksCount > 0 && (
+                            <span className="weekly-calendar__more">
+                              +{hiddenTasksCount} נוספות
+                            </span>
+                          )}
+                        </button>
                       ) : (
                         <span className="weekly-calendar__empty">-</span>
                       )}
@@ -610,6 +692,33 @@ export function TasksTableClient({
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="weekly-calendar__details-panel" aria-live="polite">
+          <div className="weekly-calendar__details-header">
+            <div>
+              <h3>פרטי חלון זמן</h3>
+              {activeCalendarSlot && activeCalendarDay ? (
+                <p>
+                  {activeCalendarDay.label} · {formatScheduleDate(activeCalendarSlot.dayKey)} ·{" "}
+                  {activeCalendarSlot.slot}
+                </p>
+              ) : (
+                <p>אין משבצת שבועית נבחרת.</p>
+              )}
+            </div>
+            <span className="badge">{activeCalendarTasks.length} משימות</span>
+          </div>
+
+          {activeCalendarTasks.length > 0 ? (
+            <div className="weekly-calendar__details-list">
+              {activeCalendarTasks.map(renderWeeklyDetailTask)}
+            </div>
+          ) : (
+            <div className="weekly-calendar__details-empty">
+              בחרו חלון זמן עם משימות כדי לראות פרטים מלאים.
+            </div>
+          )}
         </div>
       </section>
 
