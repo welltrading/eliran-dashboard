@@ -10,9 +10,37 @@ export type RawCustomerFields = {
 };
 
 export type RawInstallerFields = {
+  fldOSaSnJIAr43Btv?: unknown;
+  fld0sR1uUVVUdSSKV?: unknown;
+  fldNuwr5rLp0Vbicu?: unknown;
+  fldEKq3y8mVAqnQZu?: unknown;
+  fldGiu9i3KciTcMSO?: unknown;
+  fldpaHuYIWVkk9z17?: unknown;
+  fldICb7wcohXGmKLV?: unknown;
   "שם מתקין"?: string;
   טלפון?: string;
   פעיל?: boolean;
+};
+
+export type RawInstallerTaskFields = {
+  fld9pZpcEyipF5teB?: unknown;
+  fldAP5bP6n8okIqec?: unknown;
+  fldtSaIGqknI4t1IM?: unknown;
+  fld7wFWvaROfYEQ8B?: unknown;
+  fldGurfCRnIZNu8Dl?: unknown;
+  fld00gbAzyZVvDWOt?: unknown;
+  fldOJ9GzPbIQc7t7A?: unknown;
+  fldMehHwe8j62Zmd3?: unknown;
+};
+
+export type RawExecutionApprovalFields = {
+  fld4qJrGGMWtr09dp?: unknown;
+  fldpAZh1st8qRqA7n?: unknown;
+  fldTjEOiF0qd1FgEd?: unknown;
+  fldOCqFBKS8KuXSSV?: unknown;
+  fldmg9acRqIp0zim0?: unknown;
+  fldsMGqafeCRlN7zo?: unknown;
+  fld2wVyMe3wyhYsqK?: unknown;
 };
 
 export type RawOrderFields = {

@@ -34,8 +34,25 @@ export type Customer = {
 export type Installer = {
   id: string;
   name: string;
+  firstName: string | null;
   phone: string | null;
+  mobile: string | null;
+  capabilities: string[];
   active: boolean;
+  paidThisMonth: boolean;
+  approvedAmountToPay: number;
+  openTaskCount: number;
+  completedTaskCount: number;
+  approvedPaymentAmount: number;
+};
+
+export type InstallerSummary = {
+  totalInstallers: number;
+  installersWithPhoneOrMobile: number;
+  totalApprovedAmountToPay: number;
+  tasksScheduledThisMonth: number;
+  completedTasksPendingApproval: number;
+  completedTasksPendingApprovalIsBestEffort: boolean;
 };
 
 export type Order = {
