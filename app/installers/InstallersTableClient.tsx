@@ -7,6 +7,7 @@ type PaidFilter = "הכל" | "שולם" | "לא שולם";
 
 type InstallersTableClientProps = {
   installers: Installer[];
+  airtableTableUrl: string;
 };
 
 function formatCurrency(value: number) {
@@ -21,7 +22,10 @@ function statusTone(value: boolean) {
   return value ? "badge badge--success" : "badge badge--warning";
 }
 
-export function InstallersTableClient({ installers }: InstallersTableClientProps) {
+export function InstallersTableClient({
+  installers,
+  airtableTableUrl,
+}: InstallersTableClientProps) {
   const [search, setSearch] = useState("");
   const [paidFilter, setPaidFilter] = useState<PaidFilter>("הכל");
   const [capability, setCapability] = useState("הכל");
@@ -110,6 +114,7 @@ export function InstallersTableClient({ installers }: InstallersTableClientProps
           <table className="data-table">
             <thead>
               <tr>
+                <th>פעולה</th>
                 <th>שם מתקין</th>
                 <th>טלפון</th>
                 <th>נייד</th>
@@ -124,6 +129,15 @@ export function InstallersTableClient({ installers }: InstallersTableClientProps
             <tbody>
               {filteredInstallers.map((installer) => (
                 <tr key={installer.id}>
+                  <td>
+                    <a
+                      href={`${airtableTableUrl}/${installer.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      פתח מתקין
+                    </a>
+                  </td>
                   <td>{installer.name || installer.firstName || "-"}</td>
                   <td>{installer.phone ?? "-"}</td>
                   <td>{installer.mobile ?? "-"}</td>

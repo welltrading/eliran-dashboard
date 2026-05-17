@@ -5,6 +5,9 @@ import { InstallersTableClient } from "./InstallersTableClient";
 
 export const dynamic = "force-dynamic";
 
+const AIRTABLE_INSTALLERS_TABLE_URL =
+  "https://airtable.com/app77CdzKEqLlhZ8d/tblNj2W8WJWbeG1sl";
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("he-IL", {
     style: "currency",
@@ -22,6 +25,20 @@ export default async function InstallersPage() {
         title="מתקינים"
         description="דשבורד קריאה בלבד למעקב אחר מתקינים, משימות ותשלומים."
       />
+
+      <Card className="validation-card">
+        <div className="card__body exception-panel__header">
+          <p className="muted-text">הוספה ועריכת מתקינים מתבצעת כרגע באירטייבל.</p>
+          <a
+            className="primary-action"
+            href={AIRTABLE_INSTALLERS_TABLE_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            פתח טבלת מתקינים באירטייבל
+          </a>
+        </div>
+      </Card>
 
       <div className="grid stats-grid inventory-summary">
         <Card>
@@ -68,7 +85,10 @@ export default async function InstallersPage() {
       </div>
 
       <Card>
-        <InstallersTableClient installers={installers} />
+        <InstallersTableClient
+          installers={installers}
+          airtableTableUrl={AIRTABLE_INSTALLERS_TABLE_URL}
+        />
       </Card>
     </div>
   );
