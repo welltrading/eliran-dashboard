@@ -183,6 +183,11 @@ textarea {
   margin-bottom: 16px;
 }
 
+.tasks-summary {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
 .card {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -363,6 +368,10 @@ textarea {
   border-bottom: 1px solid var(--border);
 }
 
+.tasks-filters {
+  grid-template-columns: minmax(240px, 1.2fr) 140px 180px 150px 150px auto;
+}
+
 .filter-field {
   display: grid;
   gap: 6px;
@@ -439,6 +448,45 @@ textarea {
 
 .data-table__row--danger td:first-child {
   border-right: 3px solid var(--danger);
+}
+
+.data-table__row--warning td {
+  background: #fffbeb;
+}
+
+.data-table__row--warning td:first-child {
+  border-right: 3px solid var(--warning);
+}
+
+.data-table__row--muted td {
+  background: #f8fafc;
+  color: var(--muted);
+}
+
+.task-status-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.task-status-summary div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tasks-table {
+  min-width: 1380px;
+}
+
+.tasks-table__section-row td {
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-weight: 900;
+}
+
+.task-notes {
+  max-width: 260px;
+  white-space: normal !important;
 }
 
 .muted-text {
@@ -763,6 +811,7 @@ textarea {
   }
 
   .inventory-summary,
+  .tasks-summary,
   .validation-grid,
   .exception-item {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -798,6 +847,7 @@ textarea {
   .filters-bar,
   .stats-grid,
   .inventory-summary,
+  .tasks-summary,
   .validation-grid,
   .exception-item {
     grid-template-columns: 1fr;

@@ -6,7 +6,13 @@ export type OrderStatus =
   | "הושלמה"
   | "בוטלה";
 
-export type TaskStatus = "חדשה" | "מתואמת" | "בביצוע" | "הושלמה" | "בוטלה";
+export type TaskStatus =
+  | "פתוח"
+  | "בטיפול"
+  | "הושלם"
+  | "לביצוע"
+  | "בוצע"
+  | "בוטל";
 
 export type StockStatus = "ok" | "low" | "out" | "negative";
 
@@ -144,10 +150,35 @@ export type Task = {
   id: string;
   title: string;
   status: TaskStatus;
+  taskType: string | null;
+  executionDate: string | null;
   scheduledDate: string | null;
+  timeWindow: string | null;
+  notes: string | null;
+  actuallyDone: boolean;
+  scheduleSentToInstaller: boolean;
+  scheduleSentAt: string | null;
+  scheduleSendStatus: string | null;
+  scheduleSendError: string | null;
   installerIds: string[];
-  customerIds: string[];
+  installerName: string | null;
+  installerPhone: string | null;
   orderIds: string[];
+  orderNumber: string | null;
+  customerName: string | null;
+  phone: string | null;
+  address: string | null;
+  orderStatus: string | null;
+};
+
+export type TaskScheduleSummary = {
+  totalTasks: number;
+  scheduledToday: number;
+  scheduledTomorrow: number;
+  withoutDate: number;
+  withoutInstaller: number;
+  byStatus: Array<{ status: string; count: number }>;
+  scheduleNotSentToInstaller: number;
 };
 
 export type Quote = {

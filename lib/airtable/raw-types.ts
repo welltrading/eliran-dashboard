@@ -47,6 +47,7 @@ export type RawOrderFields = {
   fldDrP4MqsxV6EtJd?: unknown;
   fldZEobEKEQtMtoGV?: unknown;
   fldk7OdnVLITahJxd?: unknown;
+  fldzNnG3a9uojQPyO?: unknown;
   fld5bh56XRJGJhrsz?: unknown;
   flduurO6CcPQx6oya?: unknown;
   fldwvbnGd8e3PAU7d?: unknown;
@@ -118,6 +119,19 @@ export type RawProductFields = {
 };
 
 export type RawTaskFields = {
+  fld9pZpcEyipF5teB?: unknown;
+  fldAP5bP6n8okIqec?: unknown;
+  fldJQBgJQDdtQFvML?: unknown;
+  fldtSaIGqknI4t1IM?: unknown;
+  fld8xgcv4HEeW2NYF?: unknown;
+  fld7wFWvaROfYEQ8B?: unknown;
+  fldGurfCRnIZNu8Dl?: unknown;
+  fldIcfmWGysvQYv8c?: unknown;
+  fld00gbAzyZVvDWOt?: unknown;
+  fldwCt6kfDJKCwRGl?: unknown;
+  fldThdHcsu0pVe6wV?: unknown;
+  flduXVUqqxhKDwV7i?: unknown;
+  fldVo4YVjCEUBZ2JP?: unknown;
   כותרת?: string;
   סטטוס?: string;
   "תאריך מתוכנן"?: string;

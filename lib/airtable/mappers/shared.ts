@@ -11,11 +11,12 @@ const orderStatuses: OrderStatus[] = [
 ];
 
 const taskStatuses: TaskStatus[] = [
-  "חדשה",
-  "מתואמת",
-  "בביצוע",
-  "הושלמה",
-  "בוטלה",
+  "פתוח",
+  "בטיפול",
+  "הושלם",
+  "לביצוע",
+  "בוצע",
+  "בוטל",
 ];
 
 const quoteTypes: QuoteType[] = ["סטנדרטי", "ייצור אישי"];
@@ -48,7 +49,7 @@ export function orderStatus(value: unknown): OrderStatus {
 }
 
 export function taskStatus(value: unknown): TaskStatus {
-  return taskStatuses.includes(value as TaskStatus) ? (value as TaskStatus) : "חדשה";
+  return taskStatuses.includes(value as TaskStatus) ? (value as TaskStatus) : "פתוח";
 }
 
 export function quoteType(value: unknown): QuoteType {
