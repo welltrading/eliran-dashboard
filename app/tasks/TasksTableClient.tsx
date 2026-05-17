@@ -9,6 +9,7 @@ type StatusFilter = "הכל" | TaskStatus;
 
 type TasksTableClientProps = {
   tasks: Task[];
+  airtableTasksTableUrl: string;
 };
 
 const timeWindowOrder = new Map([
@@ -178,7 +179,10 @@ function scheduleLabel(task: Task) {
   return task.scheduleSendStatus ?? "לא נשלח";
 }
 
-export function TasksTableClient({ tasks }: TasksTableClientProps) {
+export function TasksTableClient({
+  tasks,
+  airtableTasksTableUrl,
+}: TasksTableClientProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("הכל");
   const [installer, setInstaller] = useState("הכל");
@@ -235,6 +239,15 @@ export function TasksTableClient({ tasks }: TasksTableClientProps) {
   const renderRows = (rows: Task[]) =>
     rows.map((task) => (
       <tr className={statusClass(task)} key={task.id}>
+        <td>
+          <a
+            href={`${airtableTasksTableUrl}/${task.id}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            פתח משימה
+          </a>
+        </td>
         <td>{formatDate(task.executionDate)}</td>
         <td>{task.timeWindow ?? "-"}</td>
         <td>{task.title || "-"}</td>
@@ -350,6 +363,7 @@ export function TasksTableClient({ tasks }: TasksTableClientProps) {
           <table className="data-table tasks-table">
             <thead>
               <tr>
+                <th>פעולה</th>
                 <th>תאריך ביצוע</th>
                 <th>חלון זמן</th>
                 <th>משימה</th>
@@ -369,7 +383,7 @@ export function TasksTableClient({ tasks }: TasksTableClientProps) {
               {renderRows(scheduledTasks)}
               {unscheduledTasks.length > 0 && (
                 <tr className="tasks-table__section-row">
-                  <td colSpan={13}>משימות ללא תאריך ביצוע</td>
+                  <td colSpan={14}>משימות ללא תאריך ביצוע</td>
                 </tr>
               )}
               {renderRows(unscheduledTasks)}

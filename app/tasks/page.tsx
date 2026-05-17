@@ -5,6 +5,9 @@ import { TasksTableClient } from "./TasksTableClient";
 
 export const dynamic = "force-dynamic";
 
+const AIRTABLE_TASKS_TABLE_URL =
+  "https://airtable.com/app77CdzKEqLlhZ8d/tblsodUowDPPiOcCk";
+
 export default async function TasksPage() {
   const tasks = await getTasks();
   const summary = getTaskScheduleSummary(tasks);
@@ -15,6 +18,20 @@ export default async function TasksPage() {
         title="משימות / התקנות"
         description="דשבורד קריאה בלבד לתיאום התקנות, מתקינים ולוחות זמנים."
       />
+
+      <Card className="validation-card">
+        <div className="card__body exception-panel__header">
+          <p className="muted-text">יצירה ועריכת משימות מתבצעת כרגע באירטייבל.</p>
+          <a
+            className="primary-action"
+            href={AIRTABLE_TASKS_TABLE_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            פתח טבלת משימות באירטייבל
+          </a>
+        </div>
+      </Card>
 
       <div className="grid stats-grid tasks-summary">
         <Card>
@@ -79,7 +96,10 @@ export default async function TasksPage() {
       </Card>
 
       <Card>
-        <TasksTableClient tasks={tasks} />
+        <TasksTableClient
+          tasks={tasks}
+          airtableTasksTableUrl={AIRTABLE_TASKS_TABLE_URL}
+        />
       </Card>
     </div>
   );
