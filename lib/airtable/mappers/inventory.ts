@@ -51,6 +51,17 @@ function nullableTextValue(value: unknown): string | null {
   return normalized ? normalized : null;
 }
 
+function cleanProductDisplayName(value: string) {
+  return value
+    .replace(/\s*\|\s*(מחסן|חנות)\s*\|\s*מלאי:\s*-?\d+\s*$/u, "")
+    .replace(/\s*\|\s*\|\s*\|\s*\|\s*$/u, "")
+    .trim();
+}
+
+function cleanSku(value: string | null) {
+  return value?.replace(/\s*\|\s*\|\s*\|\s*\|\s*$/u, "").trim() || null;
+}
+
 export function getInventoryStatus(quantity: number): StockStatus {
   if (quantity < 0) {
     return "negative";
@@ -70,16 +81,17 @@ export function getInventoryStatus(quantity: number): StockStatus {
 export function mapInventoryItem(record: RawRecord): InventoryItem {
   const availableQuantity = numberValue(record.fields.fldr4VIQAnulf5eIv);
   const linkedProductIds = linkedRecordIds(record.fields.fldHUiTkn1TFdW9n4);
-  const productName =
-    nullableTextValue(record.fields.fldj2pdrmiHYKNwAI) ||
+  const productName = cleanProductDisplayName(
     nullableTextValue(record.fields.fldexSWLxpnh3pP5k) ||
+    nullableTextValue(record.fields.fldj2pdrmiHYKNwAI) ||
     nullableTextValue(record.fields.fldYboj1U8ZHJK6aq) ||
-    "";
+    "",
+  );
 
   return {
     id: record.id,
     productName,
-    productSku: nullableTextValue(record.fields.fldgrSdEuxPne8fUH),
+    productSku: cleanSku(nullableTextValue(record.fields.fldgrSdEuxPne8fUH)),
     productRecordId:
       nullableTextValue(record.fields.fld6KM7lmkfbmeGOe) || linkedProductIds[0] || null,
     location: textValue(record.fields.fldmKrx7PBJjv0zUH),

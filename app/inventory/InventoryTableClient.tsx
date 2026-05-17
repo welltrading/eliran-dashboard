@@ -124,7 +124,10 @@ export function InventoryTableClient({ items }: InventoryTableClientProps) {
             </thead>
             <tbody>
               {filteredItems.map((item, index) => (
-                <tr key={`${item.productName || "item"}-${item.location || "location"}-${index}`}>
+                <tr
+                  className={item.status === "negative" ? "data-table__row--danger" : ""}
+                  key={`${item.productName || "item"}-${item.location || "location"}-${index}`}
+                >
                   <td>{item.productName || "-"}</td>
                   <td>{item.productSku ?? "-"}</td>
                   <td>{item.location || "-"}</td>

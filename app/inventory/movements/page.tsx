@@ -1,4 +1,5 @@
 import { getInventoryMovements } from "@/lib/airtable/services/inventory-movements";
+import { getOrderLines } from "@/lib/airtable/services/order-lines";
 import {
   buildInventoryValidation,
   getInventoryByLocation,
@@ -12,12 +13,33 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function formatDate(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("he-IL").format(date);
+}
+
 export default async function InventoryMovementsPage() {
-  const [movements, inventory] = await Promise.all([
+  const [movements, inventory, orderLines] = await Promise.all([
     getInventoryMovements(),
     getInventoryByLocation(),
+    getOrderLines(),
   ]);
   const validation = buildInventoryValidation(inventory, movements);
+  const orderLineLabelById = new Map(
+    orderLines.map((line) => [
+      line.id,
+      line.linkedOrderNumber ? String(line.linkedOrderNumber) : "שורת הזמנה",
+    ]),
+  );
   const tableMovements: InventoryMovementTableItem[] = movements.map((movement) => ({
     movementNumber: movement.movementNumber,
     date: movement.date,
@@ -29,8 +51,14 @@ export default async function InventoryMovementsPage() {
     calculatedQuantity: movement.calculatedQuantity,
     status: movement.status,
     orderLineIds: movement.orderLineIds,
+    orderLineLabels: movement.orderLineIds.map(
+      (orderLineId) => orderLineLabelById.get(orderLineId) ?? "שורת הזמנה",
+    ),
     relatedOrder: movement.relatedOrder,
   }));
+  const missingProductMovements = tableMovements.filter(
+    (movement) => movement.productRecordIds.length === 0,
+  );
 
   return (
     <div className="page">
@@ -46,6 +74,35 @@ export default async function InventoryMovementsPage() {
           </div>
         </div>
       </Card>
+      {missingProductMovements.length > 0 ? (
+        <Card className="exception-card exception-card--danger">
+          <div className="card__body exception-panel">
+            <div className="exception-panel__header">
+              <div>
+                <h2>חריגות מלאי</h2>
+                <p>תנועות מלאי ללא מוצר מקושר.</p>
+              </div>
+              <span className="badge badge--danger">
+                {missingProductMovements.length} תנועות
+              </span>
+            </div>
+            <div className="exception-list">
+              {missingProductMovements.map((movement) => (
+                <div className="exception-item" key={movement.movementNumber ?? movement.date}>
+                  <strong>תנועה {movement.movementNumber ?? "-"}</strong>
+                  <span>{formatDate(movement.date)}</span>
+                  <span>{movement.location ?? "ללא מיקום"}</span>
+                  <span>כמות {movement.quantity}</span>
+                  <span>מחושבת {movement.calculatedQuantity}</span>
+                  <span>
+                    שורה {movement.orderLineLabels.join(", ") || movement.relatedOrder || "-"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      ) : null}
       <Card>
         <InventoryMovementsTableClient movements={tableMovements} />
       </Card>

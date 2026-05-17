@@ -42,12 +42,22 @@ function nullableTextValue(value: unknown): string | null {
   return normalized ? normalized : null;
 }
 
+function cleanProductDisplayName(value: string | null) {
+  return (
+    value
+      ?.replace(/\s*\|\s*(מחסן|חנות)\s*\|\s*מלאי:\s*-?\d+\s*$/u, "")
+      .replace(/\s*\|\s*\|\s*\|\s*\|\s*$/u, "")
+      .trim() || null
+  );
+}
+
 export function mapInventoryMovement(record: RawRecord): InventoryMovement {
   const productRecordIds = linkedRecordIds(record.fields.fldG4ahYiyKWCGvoJ);
-  const productName =
+  const productName = cleanProductDisplayName(
     nullableTextValue(record.fields.fld2R7ECUE1z42DJw) ||
     nullableTextValue(record.fields.fldtSkCxX3blv1xqa) ||
-    nullableTextValue(record.fields.fldOl1NyruRJP2vzN);
+    nullableTextValue(record.fields.fldOl1NyruRJP2vzN),
+  );
 
   return {
     id: record.id,
@@ -64,6 +74,7 @@ export function mapInventoryMovement(record: RawRecord): InventoryMovement {
     status: nullableTextValue(record.fields.fldFqsW6nY2Q5Guvd),
     stockLocationIds: linkedRecordIds(record.fields.fldtsmbAgTKPc7kUj),
     orderLineIds: linkedRecordIds(record.fields.fldModhBcaJqCP6na),
+    orderLineLabels: [],
     relatedOrder: nullableTextValue(record.fields.fldY3lYOKJbW1csjM),
     notes: nullableTextValue(record.fields.fldQ8umCODTY80hBU),
   };

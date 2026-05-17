@@ -199,6 +199,15 @@ textarea {
   background: #fff7f7;
 }
 
+.exception-card {
+  margin-bottom: 16px;
+}
+
+.exception-card--danger {
+  border-color: rgba(185, 28, 28, 0.34);
+  background: #fff7f7;
+}
+
 .card__body {
   padding: 18px;
 }
@@ -289,6 +298,62 @@ textarea {
   font-weight: 750;
 }
 
+.exception-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.exception-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.exception-panel__header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.exception-panel__header p {
+  margin: 5px 0 0;
+  color: var(--danger);
+  font-weight: 750;
+}
+
+.exception-list {
+  display: grid;
+  gap: 8px;
+}
+
+.exception-item {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) repeat(5, minmax(92px, auto));
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border: 1px solid rgba(185, 28, 28, 0.24);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.exception-item strong {
+  font-size: 14px;
+}
+
+.exception-item span {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.exception-item__quantity {
+  color: var(--danger) !important;
+  font-size: 16px;
+  font-weight: 900 !important;
+}
+
 .filters-bar {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) 180px 160px auto;
@@ -366,6 +431,14 @@ textarea {
 
 .data-table tr:last-child td {
   border-bottom: 0;
+}
+
+.data-table__row--danger td {
+  background: #fff7f7;
+}
+
+.data-table__row--danger td:first-child {
+  border-right: 3px solid var(--danger);
 }
 
 .muted-text {
@@ -690,7 +763,8 @@ textarea {
   }
 
   .inventory-summary,
-  .validation-grid {
+  .validation-grid,
+  .exception-item {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -724,7 +798,8 @@ textarea {
   .filters-bar,
   .stats-grid,
   .inventory-summary,
-  .validation-grid {
+  .validation-grid,
+  .exception-item {
     grid-template-columns: 1fr;
   }
 

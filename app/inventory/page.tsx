@@ -26,6 +26,7 @@ export default async function InventoryPage() {
     out: validation.inventoryOutCount,
     negative: validation.inventoryNegativeCount,
   };
+  const negativeItems = items.filter((item) => item.status === "negative");
 
   return (
     <div className="page">
@@ -81,6 +82,29 @@ export default async function InventoryPage() {
           </div>
         </div>
       </Card>
+      {negativeItems.length > 0 ? (
+        <Card className="exception-card exception-card--danger">
+          <div className="card__body exception-panel">
+            <div className="exception-panel__header">
+              <div>
+                <h2>חריגות מלאי</h2>
+                <p>פריטים עם מלאי שלילי שדורשים בדיקה.</p>
+              </div>
+              <span className="badge badge--danger">{negativeItems.length} פריטים</span>
+            </div>
+            <div className="exception-list">
+              {negativeItems.map((item) => (
+                <div className="exception-item" key={item.id}>
+                  <strong>{item.productName || item.productSku || "מוצר ללא שם"}</strong>
+                  <span>{item.productSku ?? "ללא מקט"}</span>
+                  <span>{item.location || "ללא מיקום"}</span>
+                  <span className="exception-item__quantity">{item.availableQuantity}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      ) : null}
       <Card>
         <InventoryTableClient items={tableItems} />
       </Card>

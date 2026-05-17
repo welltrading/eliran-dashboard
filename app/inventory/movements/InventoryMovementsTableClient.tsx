@@ -13,6 +13,7 @@ export type InventoryMovementTableItem = {
   calculatedQuantity: number;
   status: string | null;
   orderLineIds: string[];
+  orderLineLabels: string[];
   relatedOrder: string | null;
 };
 
@@ -60,7 +61,7 @@ export function InventoryMovementsTableClient({
     const normalizedSearch = productSearch.trim().toLowerCase();
 
     return movements.filter((movement) => {
-      const productLabel = movement.productName || movement.productRecordIds.join(", ");
+      const productLabel = movement.productName || "";
       const matchesProduct =
         !normalizedSearch || productLabel.toLowerCase().includes(normalizedSearch);
       const matchesLocation = location === "הכל" || movement.location === location;
@@ -140,19 +141,22 @@ export function InventoryMovementsTableClient({
             <tbody>
               {filteredMovements.map((movement, index) => (
                 <tr
+                  className={
+                    movement.productRecordIds.length === 0 ? "data-table__row--danger" : ""
+                  }
                   key={`${movement.movementNumber ?? movement.date ?? "movement"}-${
-                    movement.productName || movement.productRecordIds.join("-") || "product"
+                    movement.productName || "product"
                   }-${index}`}
                 >
                   <td>{movement.movementNumber ?? "-"}</td>
                   <td>{formatDate(movement.date)}</td>
-                  <td>{movement.productName || movement.productRecordIds.join(", ") || "-"}</td>
+                  <td>{movement.productName || "חסר מוצר"}</td>
                   <td>{movement.location ?? "-"}</td>
                   <td>{movement.movementType || "-"}</td>
                   <td>{movement.quantity}</td>
                   <td>{movement.calculatedQuantity}</td>
                   <td>{movement.status ?? "-"}</td>
-                  <td>{movement.orderLineIds.join(", ") || "-"}</td>
+                  <td>{movement.orderLineLabels.join(", ") || "-"}</td>
                   <td>{movement.relatedOrder ?? "-"}</td>
                 </tr>
               ))}

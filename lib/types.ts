@@ -92,6 +92,7 @@ export type InventoryMovement = {
   status: string | null;
   stockLocationIds: string[];
   orderLineIds: string[];
+  orderLineLabels: string[];
   relatedOrder: string | null;
   notes: string | null;
 };
