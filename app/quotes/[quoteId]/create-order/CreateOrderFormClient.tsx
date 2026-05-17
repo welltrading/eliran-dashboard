@@ -1,7 +1,13 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import type { OrderStatus, OrderType, Product, Quote } from "@/lib/types";
+import type {
+  FulfillmentSource,
+  OrderStatus,
+  OrderType,
+  Product,
+  Quote,
+} from "@/lib/types";
 import { createOrderFromQuoteAction } from "./actions";
 
 type DraftLine = {
@@ -17,7 +23,7 @@ type DraftLine = {
   quantity: number;
   priceBeforeVat: number;
   totalPrice: number;
-  location: string;
+  location: FulfillmentSource | "";
   affectsStock: boolean;
   notes: string;
 };
@@ -37,6 +43,8 @@ const orderStatuses: OrderStatus[] = [
   "הושלמה",
   "בוטלה",
 ];
+
+const fulfillmentSources: FulfillmentSource[] = ["חנות", "מחסן", "הזמנה מספק"];
 
 function positiveNumberOrDefault(value: number | null, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) && value > 0
@@ -68,6 +76,26 @@ function formatCurrency(value: number) {
     currency: "ILS",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function affectsExistingInventory(source: FulfillmentSource | "") {
+  return source === "חנות" || source === "מחסן";
+}
+
+function stockImpactLabel(orderType: OrderType, line: DraftLine) {
+  if (orderType !== "סטנדרטי") {
+    return "-";
+  }
+
+  if (affectsExistingInventory(line.location)) {
+    return "יציאה מהמלאי";
+  }
+
+  if (line.location === "הזמנה מספק") {
+    return "ללא תנועת מלאי";
+  }
+
+  return "-";
 }
 
 function isPersistableLine(line: DraftLine, orderType: OrderType) {
@@ -174,7 +202,7 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
       }
 
       if (orderType === "סטנדרטי" && !line.location) {
-        errors.push(`שורה ${lineNumber}: מיקום יציאה נדרש בהזמנה סטנדרטית.`);
+        errors.push(`שורה ${lineNumber}: מקור אספקה נדרש בהזמנה סטנדרטית.`);
       }
     });
 
@@ -514,15 +542,27 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
                   </label>
 
                   <label className="form-field form-field--wide">
-                    <span>מיקום יציאה</span>
+                    <span>מהיכן יוצא המוצר</span>
                     <select
                       value={line.location}
-                      onChange={(event) => updateLine(index, { location: event.target.value })}
+                      onChange={(event) =>
+                        updateLine(index, {
+                          location: event.target.value as FulfillmentSource | "",
+                        })
+                      }
                     >
                       <option value="">ללא</option>
-                      <option value="חנות">חנות</option>
-                      <option value="מחסן">מחסן</option>
+                      {fulfillmentSources.map((source) => (
+                        <option key={source} value={source}>
+                          {source}
+                        </option>
+                      ))}
                     </select>
+                    {line.location === "הזמנה מספק" ? (
+                      <span className="muted-text">
+                        הזמנה מספק לא מורידה מהמלאי הקיים
+                      </span>
+                    ) : null}
                   </label>
 
                   <label className="form-field">
@@ -589,7 +629,10 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
         <div className="section-heading">
           <div>
             <h2>תצוגת השפעה על מלאי</h2>
-            <p>לא תיווצר תנועת מלאי בשלב זה.</p>
+            <p>
+              חנות או מחסן צפויים ליצור תנועת יציאה באוטומציה. הזמנה מספק לא
+              מורידה מהמלאי הקיים.
+            </p>
           </div>
         </div>
 
@@ -615,9 +658,7 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
                   <td>{line.location || "-"}</td>
                   <td>{line.quantity}</td>
                   <td>
-                    {orderType === "סטנדרטי" && line.affectsStock
-                      ? "יציאה מהמלאי"
-                      : "-"}
+                    {stockImpactLabel(orderType, line)}
                   </td>
                   <td>לא יישמר בשלב זה</td>
                 </tr>

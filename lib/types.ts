@@ -14,6 +14,8 @@ export type QuoteType = "סטנדרטי" | "ייצור אישי";
 
 export type OrderType = "סטנדרטי" | "ייצור אישי";
 
+export type FulfillmentSource = "חנות" | "מחסן" | "הזמנה מספק";
+
 export type DashboardStat = {
   label: string;
   value: string;

@@ -1,5 +1,5 @@
 import "server-only";
-import type { OrderType } from "@/lib/types";
+import type { FulfillmentSource, OrderType } from "@/lib/types";
 import { airtableTables } from "../tables";
 import { createRecord, createRecords, deleteRecord, updateRecord } from "../write-client";
 import { getQuoteById } from "./quotes";
@@ -16,7 +16,7 @@ type CreateOrderLineInput = {
   measurementRequired?: string | null;
   quantity: number;
   totalPrice: number;
-  location: string | null;
+  location: FulfillmentSource | null;
 };
 
 export type CreateOrderFromQuoteInput = {
@@ -89,6 +89,7 @@ const glassTypes = [
 const hardwareColors = ["גרפיט", "לבן", "ניקל", "שחור", "זהב"];
 const dismantlingOptions = ["נדרש פירוק", "לא נדרש פירוק"];
 const measurementRequiredOptions = ["כן", "לא"];
+const fulfillmentSources: FulfillmentSource[] = ["חנות", "מחסן", "הזמנה מספק"];
 
 function normalizedText(value: string) {
   return value.trim();
@@ -118,6 +119,14 @@ function normalizeSelectValue(
     : null;
 }
 
+function normalizeFulfillmentSource(value: string | null | undefined) {
+  return normalizeSelectValue(value, fulfillmentSources) as FulfillmentSource | null;
+}
+
+function affectsExistingInventory(source: FulfillmentSource | null) {
+  return source === "חנות" || source === "מחסן";
+}
+
 function normalizeLine(line: CreateOrderLineInput): CreateOrderLineInput {
   return {
     description: normalizedText(line.description),
@@ -137,7 +146,7 @@ function normalizeLine(line: CreateOrderLineInput): CreateOrderLineInput {
     ),
     quantity: Number(line.quantity),
     totalPrice: Number(line.totalPrice),
-    location: line.location ? normalizedText(line.location) : null,
+    location: normalizeFulfillmentSource(line.location),
   };
 }
 
@@ -215,7 +224,7 @@ function validateInput(input: CreateOrderFromQuoteInput) {
     }
 
     if (input.orderType === "סטנדרטי" && !line.location) {
-      errors.push(`שורה ${lineNumber}: מיקום יציאה הוא שדה חובה בהזמנה סטנדרטית.`);
+      errors.push(`שורה ${lineNumber}: מקור אספקה הוא שדה חובה בהזמנה סטנדרטית.`);
     }
   });
 
@@ -278,6 +287,8 @@ export async function createOrderFromQuote(input: CreateOrderFromQuoteInput) {
       orderFields.flddmlzT9ZHk5spa1 = firstProductLine.quantity;
       orderFields.fldcsD7TEjjYB6kz3 = firstProductLine.totalPrice;
 
+      // Order-level source follows the first standard product line for now.
+      // Line-level source is the source of truth for inventory movement automation.
       if (firstProductLine.location) {
         orderFields.fldq01o2TcYhhqwfm = firstProductLine.location;
       }
@@ -345,7 +356,9 @@ export async function createOrderFromQuote(input: CreateOrderFromQuoteInput) {
 
       if (normalizedInput.orderType === "סטנדרטי" && line.productId) {
         fields.fldYnSRIPH7j9rpSn = [line.productId];
-        fields.fldr1hhLfgIDGxhHS = "יציאה מהמלאי";
+        if (affectsExistingInventory(line.location)) {
+          fields.fldr1hhLfgIDGxhHS = "יציאה מהמלאי";
+        }
       }
 
       if (line.location) {
