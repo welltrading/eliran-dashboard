@@ -190,6 +190,7 @@ export type Quote = {
   status: string;
   createdAt: string | null;
   totalPrice: number;
+  ezDocUrl: string | null;
   leadSource: string | null;
   createOrderUrl: string | null;
   productIds: string[];

@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import type { Quote, QuoteType } from "@/lib/types";
+import { CreateQuoteButton } from "./CreateQuoteButton";
 
 type QuoteTypeFilter = "הכל" | QuoteType;
 type StatusFilter = "הכל" | "נשלח" | "ממתין" | "ריק";
@@ -48,9 +50,11 @@ function matchesStatus(status: string, filter: StatusFilter) {
 }
 
 export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [quoteType, setQuoteType] = useState<QuoteTypeFilter>("הכל");
   const [status, setStatus] = useState<StatusFilter>("הכל");
+  const [isRefreshing, startRefresh] = useTransition();
 
   const filteredQuotes = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -117,6 +121,15 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
         <p className="table-summary">
           מציג {filteredQuotes.length} מתוך {quotes.length}
         </p>
+
+        <button
+          className="refresh-button"
+          type="button"
+          onClick={() => startRefresh(() => router.refresh())}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? "מרענן..." : "רענון נתונים"}
+        </button>
       </div>
 
       <div className="table-wrap">
@@ -124,9 +137,10 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>פעולה</th>
-                <th>הזמנה</th>
                 <th>מספר הצעה</th>
+                <th>פעולה</th>
+                <th>הצעת EasyCount</th>
+                <th>הזמנה</th>
                 <th>שם לקוח</th>
                 <th>טלפון</th>
                 <th>סוג הצעה</th>
@@ -142,6 +156,7 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
 
                 return (
                   <tr key={quote.id}>
+                    <td>{quote.quoteNumber || "-"}</td>
                     <td>
                       {hasCreatedOrder ? (
                         <span className="muted-text">כבר נוצרה הזמנה</span>
@@ -152,13 +167,19 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
                       )}
                     </td>
                     <td>
+                      <CreateQuoteButton
+                        recordId={quote.id}
+                        quoteType={quote.quoteType}
+                        ezDocUrl={quote.ezDocUrl}
+                      />
+                    </td>
+                    <td>
                       {hasCreatedOrder ? (
                         <span className="badge badge--success">נוצרה הזמנה</span>
                       ) : (
                         "-"
                       )}
                     </td>
-                    <td>{quote.quoteNumber || "-"}</td>
                     <td>{quote.customerName || "-"}</td>
                     <td>{quote.phone ?? "-"}</td>
                     <td>{quote.quoteType}</td>

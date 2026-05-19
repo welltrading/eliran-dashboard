@@ -18,6 +18,8 @@ type SelectOptions = {
   filterByFormula?: string;
   returnFieldsByFieldId?: boolean;
   sort?: Array<{ field: string; direction?: "asc" | "desc" }>;
+  cache?: RequestCache;
+  revalidate?: number;
 };
 
 function buildSelectUrl(baseId: string, tableName: string, options: SelectOptions) {
@@ -64,14 +66,21 @@ export async function selectRecords<TFields>(
       url.searchParams.set("offset", offset);
     }
 
-    const response = await fetch(url, {
+    const fetchOptions: RequestInit & { next?: { revalidate: number } } = {
       headers: {
         Authorization: `Bearer ${apiKey}`,
       },
-      next: {
-        revalidate: 60,
-      },
-    });
+    };
+
+    if (options.cache) {
+      fetchOptions.cache = options.cache;
+    } else {
+      fetchOptions.next = {
+        revalidate: options.revalidate ?? 60,
+      };
+    }
+
+    const response = await fetch(url, fetchOptions);
 
     if (!response.ok) {
       throw new Error(`Airtable read failed for ${tableName}: ${response.status}`);

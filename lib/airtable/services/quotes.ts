@@ -6,9 +6,12 @@ import { airtableTables } from "../tables";
 
 export async function getQuotes() {
   const records = await selectRecords<RawQuoteFields>(airtableTables.quotes, {
+    cache: "no-store",
     returnFieldsByFieldId: true,
   });
-  return records.map(mapQuote);
+  return records
+    .map(mapQuote)
+    .sort((a, b) => Number(b.quoteNumber) - Number(a.quoteNumber));
 }
 
 export async function getQuoteById(id: string) {

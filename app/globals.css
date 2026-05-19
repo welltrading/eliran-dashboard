@@ -361,7 +361,7 @@ textarea {
 
 .filters-bar {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 180px 160px auto;
+  grid-template-columns: minmax(260px, 1fr) 180px 160px auto auto;
   align-items: end;
   gap: 12px;
   padding: 16px;
@@ -818,6 +818,23 @@ textarea {
   outline: 2px solid rgba(15, 118, 110, 0.14);
 }
 
+.refresh-button {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font-weight: 850;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+.refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .table-summary {
   margin: 0;
   color: var(--muted);
@@ -909,6 +926,46 @@ textarea {
 
 .muted-text {
   color: var(--muted);
+}
+
+.quote-action {
+  display: grid;
+  gap: 6px;
+  min-width: 170px;
+}
+
+.quote-action__button {
+  min-height: 34px;
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 6px 11px;
+  white-space: nowrap;
+}
+
+.quote-action__button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.quote-action__message {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 240px;
+}
+
+.quote-action__message--success {
+  color: var(--accent-strong);
+}
+
+.quote-action__message--error {
+  color: var(--danger);
 }
 
 .badge {

@@ -75,6 +75,7 @@ export function mapQuote(record: RawRecord): Quote {
     status: textValue(record.fields.fldzlKcHkLftZVxFM),
     createdAt: nullableTextValue(record.fields.fldF5hky2jB0vs5GY),
     totalPrice: numberValue(record.fields.fldHnLVvPoqT0VHvA),
+    ezDocUrl: urlValue(record.fields.fldh8tz1xgQNCNGgH),
     leadSource: nullableTextValue(record.fields.fldOY3RLPblIPoz60),
     createOrderUrl:
       urlValue(record.fields.fldgzZ3UQE6FOil0T) ??
