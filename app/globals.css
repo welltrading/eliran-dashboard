@@ -1020,6 +1020,38 @@ textarea {
   font-weight: 900;
 }
 
+.pending-approvals__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pending-approvals__header h2,
+.pending-approvals__header p {
+  margin: 0;
+}
+
+.pending-approvals__header h2 {
+  font-size: 18px;
+}
+
+.pending-approvals__header p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.pending-approvals {
+  padding: 16px;
+}
+
+.pending-approvals__table {
+  min-width: 980px;
+}
+
 .task-notes {
   max-width: 260px;
   white-space: normal !important;

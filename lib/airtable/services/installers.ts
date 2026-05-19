@@ -1,11 +1,16 @@
 import "server-only";
-import type { Installer, InstallerSummary } from "@/lib/types";
+import type {
+  Installer,
+  InstallerSummary,
+  PendingPaymentApprovalTask,
+} from "@/lib/types";
 import { selectRecords } from "../client";
 import type {
   RawExecutionApprovalFields,
   RawInstallerFields,
   RawInstallerTaskFields,
 } from "../raw-types";
+import { createRecord, updateRecord } from "../write-client";
 
 const INSTALLERS_TABLE_ID = "tblNj2W8WJWbeG1sl";
 const TASKS_TABLE_ID = "tblsodUowDPPiOcCk";
@@ -23,6 +28,15 @@ type InstallerTaskCounts = {
 
 type InstallerPaymentTotals = {
   approvedPaymentAmount: number;
+};
+
+type ApprovalPaymentFields = {
+  fldpAZh1st8qRqA7n?: string[];
+  fld82nUwa5hZGSDlF?: string;
+  fldTjEOiF0qd1FgEd?: string[];
+  fldOCqFBKS8KuXSSV?: boolean;
+  fldmg9acRqIp0zim0?: "אושר";
+  fldDLbU0YVyUJN3WV?: string;
 };
 
 function textValue(value: unknown) {
@@ -63,6 +77,19 @@ function numberValue(value: unknown) {
   return 0;
 }
 
+function nullableNumberValue(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const total = value.reduce((sum, item) => sum + numberValue(item), 0);
+    return total > 0 ? total : null;
+  }
+
+  return null;
+}
+
 function booleanValue(value: unknown, fallback = false) {
   return typeof value === "boolean" ? value : fallback;
 }
@@ -82,6 +109,28 @@ function listValue(value: unknown) {
   return value
     .map((item) => textValue(item))
     .filter((item) => item.length > 0);
+}
+
+function firstListText(value: unknown) {
+  return listValue(value)[0] ?? null;
+}
+
+function taskTypeLabel(fields: RawInstallerTaskFields) {
+  const dashboardLabel = nullableTextValue(fields.fld8IAHnls7oZUMOC);
+
+  if (dashboardLabel) {
+    return dashboardLabel;
+  }
+
+  const taskTitle = nullableTextValue(fields.fld9pZpcEyipF5teB);
+  const titlePrefix = taskTitle?.split(" | הזמנה ")[0]?.trim();
+
+  if (titlePrefix) {
+    return titlePrefix;
+  }
+
+  const linkedLabel = firstListText(fields.fld8xgcv4HEeW2NYF);
+  return linkedLabel?.startsWith("rec") ? null : linkedLabel;
 }
 
 function monthKey(value: Date) {
@@ -121,9 +170,76 @@ function isOpenTask(fields: RawInstallerTaskFields) {
 
 function isApprovedApproval(fields: RawExecutionApprovalFields) {
   return (
-    booleanValue(fields.fldOCqFBKS8KuXSSV) ||
-    textValue(fields.fldmg9acRqIp0zim0).includes("מאושר")
+    booleanValue(fields.fldOCqFBKS8KuXSSV) &&
+    textValue(fields.fldmg9acRqIp0zim0) === "אושר" &&
+    !booleanValue(fields.fldxJM4QXKh7kitBM)
   );
+}
+
+function isValidPaymentApproval(fields: RawExecutionApprovalFields) {
+  return isApprovedApproval(fields);
+}
+
+function approvalDateTimeFromTaskDate(value: string | null) {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  return new Date(`${value.slice(0, 10)}T00:00:00.000+03:00`).toISOString();
+}
+
+function buildApprovalsByTaskId(
+  approvals: AirtableRecord<RawExecutionApprovalFields>[],
+) {
+  const approvalsByTaskId = new Map<string, AirtableRecord<RawExecutionApprovalFields>[]>();
+
+  approvals.forEach((approval) => {
+    linkedRecordIds(approval.fields.fldpAZh1st8qRqA7n).forEach((taskId) => {
+      approvalsByTaskId.set(taskId, [
+        ...(approvalsByTaskId.get(taskId) ?? []),
+        approval,
+      ]);
+    });
+  });
+
+  return approvalsByTaskId;
+}
+
+function hasValidPaymentApproval(
+  approvals: AirtableRecord<RawExecutionApprovalFields>[],
+) {
+  return approvals.some((approval) => isValidPaymentApproval(approval.fields));
+}
+
+function mapPendingPaymentApprovalTask(
+  task: AirtableRecord<RawInstallerTaskFields>,
+  installerById: Map<string, string>,
+  approvalsByTaskId: Map<string, AirtableRecord<RawExecutionApprovalFields>[]>,
+): PendingPaymentApprovalTask | null {
+  const fields = task.fields;
+  const installerId = linkedRecordIds(fields.fldtSaIGqknI4t1IM)[0];
+
+  if (!booleanValue(fields.fld00gbAzyZVvDWOt) || !installerId) {
+    return null;
+  }
+
+  const taskApprovals = approvalsByTaskId.get(task.id) ?? [];
+
+  if (hasValidPaymentApproval(taskApprovals)) {
+    return null;
+  }
+
+  return {
+    id: task.id,
+    executionDate: nullableTextValue(fields.fld7wFWvaROfYEQ8B),
+    customerName: firstListText(fields.fldgntnzuRgEBSfdj),
+    orderNumber: firstListText(fields.fldJktpQOU9RRgy1t),
+    taskType: taskTypeLabel(fields),
+    installerId,
+    installerName: installerById.get(installerId) ?? "ללא שם מתקין",
+    paymentAmount: nullableNumberValue(fields.fldSh9sHtkiOTkIwd),
+    existingApprovalId: taskApprovals.length === 1 ? taskApprovals[0].id : null,
+  };
 }
 
 function mapInstaller(
@@ -272,4 +388,162 @@ export async function getInstallers() {
     installers,
     summary: buildSummary(installers, taskRecords, approvalRecords),
   };
+}
+
+export async function getPendingPaymentApprovalTasks() {
+  const [taskRecords, installerRecords, approvalRecords] = await Promise.all([
+    selectRecords<RawInstallerTaskFields>(TASKS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+  ]);
+
+  const installerById = new Map(
+    installerRecords.map((record) => [
+      record.id,
+      textValue(record.fields.fldOSaSnJIAr43Btv) || textValue(record.fields["שם מתקין"]),
+    ]),
+  );
+  const approvalsByTaskId = buildApprovalsByTaskId(approvalRecords);
+
+  return taskRecords
+    .map((task) =>
+      mapPendingPaymentApprovalTask(task, installerById, approvalsByTaskId),
+    )
+    .filter((task): task is PendingPaymentApprovalTask => Boolean(task))
+    .sort((a, b) => {
+      if (a.executionDate && b.executionDate && a.executionDate !== b.executionDate) {
+        return a.executionDate.localeCompare(b.executionDate);
+      }
+
+      if (!a.executionDate && b.executionDate) {
+        return 1;
+      }
+
+      if (a.executionDate && !b.executionDate) {
+        return -1;
+      }
+
+      return a.installerName.localeCompare(b.installerName, "he");
+    });
+}
+
+export async function approveTaskPayment(taskId: string) {
+  const normalizedTaskId = taskId.trim();
+
+  if (!normalizedTaskId) {
+    return {
+      ok: false as const,
+      message: "חסרה משימה לאישור.",
+      errors: ["חסר מזהה משימה."],
+    };
+  }
+
+  const [taskRecords, allApprovalRecords] = await Promise.all([
+    selectRecords<RawInstallerTaskFields>(TASKS_TABLE_ID, {
+      cache: "no-store",
+      filterByFormula: `RECORD_ID() = '${normalizedTaskId}'`,
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+  ]);
+  const approvalRecords = allApprovalRecords.filter((approvalRecord) =>
+    linkedRecordIds(approvalRecord.fields.fldpAZh1st8qRqA7n).includes(
+      normalizedTaskId,
+    ),
+  );
+
+  const task = taskRecords[0];
+
+  if (!task) {
+    return {
+      ok: false as const,
+      message: "המשימה לא נמצאה.",
+      errors: ["לא נמצאה משימה תואמת בטבלת משימות."],
+    };
+  }
+
+  const installerId = linkedRecordIds(task.fields.fldtSaIGqknI4t1IM)[0];
+  const paymentAmount = nullableNumberValue(task.fields.fldSh9sHtkiOTkIwd);
+
+  if (!booleanValue(task.fields.fld00gbAzyZVvDWOt)) {
+    return {
+      ok: false as const,
+      message: "לא ניתן לאשר תשלום למשימה שלא סומנה כבוצעה.",
+      errors: ["בוצע בפועל אינו מסומן."],
+    };
+  }
+
+  if (!installerId) {
+    return {
+      ok: false as const,
+      message: "לא ניתן לאשר תשלום ללא מתקין.",
+      errors: ["למשימה אין מתקין משויך."],
+    };
+  }
+
+  if (!paymentAmount) {
+    return {
+      ok: false as const,
+      message: "לא ניתן לאשר תשלום למשימה ללא סכום.",
+      errors: ["חסר תעריף או סכום לתשלום."],
+    };
+  }
+
+  if (approvalRecords.length > 1) {
+    return {
+      ok: false as const,
+      message: "נמצאו כמה אישורי ביצוע למשימה הזו. האישור נעצר כדי למנוע כפילות תשלום.",
+      errors: ["יש לטפל בכפילויות אישורי הביצוע באיירטייבל לפני אישור התשלום."],
+    };
+  }
+
+  const approvalFields: ApprovalPaymentFields = {
+    fldpAZh1st8qRqA7n: [normalizedTaskId],
+    fld82nUwa5hZGSDlF: approvalDateTimeFromTaskDate(
+      nullableTextValue(task.fields.fld7wFWvaROfYEQ8B),
+    ),
+    fldTjEOiF0qd1FgEd: [installerId],
+    fldOCqFBKS8KuXSSV: true,
+    fldmg9acRqIp0zim0: "אושר",
+    fldDLbU0YVyUJN3WV: new Date().toISOString(),
+  };
+
+  try {
+    if (approvalRecords.length === 1) {
+      await updateRecord<ApprovalPaymentFields>(
+        APPROVALS_TABLE_ID,
+        approvalRecords[0].id,
+        approvalFields,
+      );
+    } else {
+      await createRecord<ApprovalPaymentFields>(APPROVALS_TABLE_ID, approvalFields);
+    }
+
+    return {
+      ok: true as const,
+      message: "התשלום אושר בהצלחה.",
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: "אישור התשלום ב-Airtable נכשל.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת אישור התשלום.",
+      ],
+    };
+  }
 }

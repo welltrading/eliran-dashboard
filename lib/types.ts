@@ -61,6 +61,18 @@ export type InstallerSummary = {
   completedTasksPendingApprovalIsBestEffort: boolean;
 };
 
+export type PendingPaymentApprovalTask = {
+  id: string;
+  executionDate: string | null;
+  customerName: string | null;
+  orderNumber: string | null;
+  taskType: string | null;
+  installerId: string;
+  installerName: string;
+  paymentAmount: number | null;
+  existingApprovalId: string | null;
+};
+
 export type Order = {
   id: string;
   orderNumber: string;

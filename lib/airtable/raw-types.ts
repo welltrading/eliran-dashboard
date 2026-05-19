@@ -26,20 +26,28 @@ export type RawInstallerTaskFields = {
   fld9pZpcEyipF5teB?: unknown;
   fldAP5bP6n8okIqec?: unknown;
   fldtSaIGqknI4t1IM?: unknown;
+  fld8xgcv4HEeW2NYF?: unknown;
+  fld8IAHnls7oZUMOC?: unknown;
+  fldSh9sHtkiOTkIwd?: unknown;
   fld7wFWvaROfYEQ8B?: unknown;
   fldGurfCRnIZNu8Dl?: unknown;
   fld00gbAzyZVvDWOt?: unknown;
   fldOJ9GzPbIQc7t7A?: unknown;
   fldMehHwe8j62Zmd3?: unknown;
+  fldgntnzuRgEBSfdj?: unknown;
+  fldJktpQOU9RRgy1t?: unknown;
 };
 
 export type RawExecutionApprovalFields = {
   fld4qJrGGMWtr09dp?: unknown;
   fldpAZh1st8qRqA7n?: unknown;
+  fld82nUwa5hZGSDlF?: unknown;
   fldTjEOiF0qd1FgEd?: unknown;
   fldOCqFBKS8KuXSSV?: unknown;
   fldmg9acRqIp0zim0?: unknown;
+  fldxJM4QXKh7kitBM?: unknown;
   fldsMGqafeCRlN7zo?: unknown;
+  fldDLbU0YVyUJN3WV?: unknown;
   fld2wVyMe3wyhYsqK?: unknown;
 };
 

@@ -1,7 +1,11 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { getInstallers } from "@/lib/airtable/services/installers";
+import {
+  getInstallers,
+  getPendingPaymentApprovalTasks,
+} from "@/lib/airtable/services/installers";
 import { InstallersTableClient } from "./InstallersTableClient";
+import { PendingPaymentApprovalsClient } from "./PendingPaymentApprovalsClient";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +21,16 @@ function formatCurrency(value: number) {
 }
 
 export default async function InstallersPage() {
-  const { installers, summary } = await getInstallers();
+  const [{ installers, summary }, pendingPaymentApprovalTasks] = await Promise.all([
+    getInstallers(),
+    getPendingPaymentApprovalTasks(),
+  ]);
 
   return (
     <div className="page">
       <PageHeader
         title="מתקינים"
-        description="דשבורד קריאה בלבד למעקב אחר מתקינים, משימות ותשלומים."
+        description="מסך עבודה למעקב אחר מתקינים, משימות ואישורי תשלום."
       />
 
       <Card className="validation-card">
@@ -83,6 +90,10 @@ export default async function InstallersPage() {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <PendingPaymentApprovalsClient tasks={pendingPaymentApprovalTasks} />
+      </Card>
 
       <Card>
         <InstallersTableClient
