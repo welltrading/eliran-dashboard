@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import type { Task, TaskStatus } from "@/lib/types";
-import { markTaskDoneAction } from "./actions";
+import { markTaskDoneAction, updateTaskAssignmentAction } from "./actions";
 
 type DateFilter = "הכל" | "היום" | "מחר" | "השבוע" | "ללא תאריך";
 type ScheduleSentFilter = "הכל" | "נשלח" | "לא נשלח" | "שגיאה";
@@ -14,9 +14,14 @@ type CalendarSelection = {
   slot: CalendarSlot;
 };
 type StatusFilter = "הכל" | TaskStatus;
+type TaskInstallerOption = {
+  id: string;
+  name: string;
+};
 
 type TasksTableClientProps = {
   tasks: Task[];
+  installerOptions: TaskInstallerOption[];
   airtableTasksTableUrl: string;
 };
 
@@ -27,6 +32,7 @@ const timeWindowOrder = new Map([
 ]);
 
 const scheduleViews: ScheduleView[] = ["היום", "מחר", "השבוע", "ללא תאריך"];
+const assignmentTimeWindows = ["10-13", "13-16", "16-19"] as const;
 const weekDays = [
   { label: "ראשון", offset: 0 },
   { label: "שני", offset: 1 },
@@ -317,10 +323,12 @@ function weeklyCompactTaskClass(task: Task) {
 
 export function TasksTableClient({
   tasks,
+  installerOptions,
   airtableTasksTableUrl,
 }: TasksTableClientProps) {
   const router = useRouter();
   const [isMarkingDone, startMarkingDoneTransition] = useTransition();
+  const [isSavingAssignment, startAssignmentTransition] = useTransition();
   const [scheduleView, setScheduleView] = useState<ScheduleView>("היום");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("הכל");
@@ -330,6 +338,8 @@ export function TasksTableClient({
   const [selectedCalendarSlot, setSelectedCalendarSlot] =
     useState<CalendarSelection | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [assignmentSavingTaskId, setAssignmentSavingTaskId] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskUpdateError, setTaskUpdateError] = useState<string | null>(null);
 
   const statuses = useMemo(() => {
@@ -482,54 +492,209 @@ export function TasksTableClient({
     });
   }
 
+  function openAssignmentEditor(task: Task) {
+    const currentTimeWindow = assignmentTimeWindows.includes(
+      task.timeWindow as (typeof assignmentTimeWindows)[number],
+    )
+      ? task.timeWindow ?? ""
+      : "";
+
+    setTaskUpdateError(null);
+    setEditingTaskId(task.id);
+  }
+
+  function closeAssignmentEditor() {
+    if (isSavingAssignment) {
+      return;
+    }
+
+    setEditingTaskId(null);
+  }
+
+  function handleSaveAssignment(task: Task, formData: FormData) {
+    if (isSavingAssignment) {
+      return;
+    }
+
+    setTaskUpdateError(null);
+    setAssignmentSavingTaskId(task.id);
+
+    startAssignmentTransition(async () => {
+      const result = await updateTaskAssignmentAction({
+        taskId: task.id,
+        executionDate: String(formData.get("executionDate") ?? "") || null,
+        timeWindow: String(formData.get("timeWindow") ?? "") || null,
+        installerId: String(formData.get("installerId") ?? "") || null,
+      });
+
+      if (result.ok) {
+        setEditingTaskId(null);
+        setAssignmentSavingTaskId(null);
+        router.refresh();
+        return;
+      }
+
+      setTaskUpdateError(
+        [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+      );
+      setAssignmentSavingTaskId(null);
+    });
+  }
+
+  const renderAssignmentEditor = (task: Task) => {
+    const isSavingCurrentTask = assignmentSavingTaskId === task.id;
+    const currentTimeWindow = assignmentTimeWindows.includes(
+      task.timeWindow as (typeof assignmentTimeWindows)[number],
+    )
+      ? task.timeWindow ?? ""
+      : "";
+
+    return (
+      <tr className="tasks-table__assignment-row">
+        <td colSpan={14}>
+          <form
+            className="task-assignment-editor"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSaveAssignment(task, new FormData(event.currentTarget));
+            }}
+          >
+            <div className="task-assignment-editor__heading">
+              <div>
+                <strong>עריכת שיבוץ</strong>
+                <span>{task.title || "משימה ללא תיאור"}</span>
+              </div>
+            </div>
+
+            <div className="task-assignment-editor__fields">
+              <label className="filter-field">
+                <span className="filter-label">תאריך ביצוע</span>
+                <input
+                  className="filter-input"
+                  type="date"
+                  name="executionDate"
+                  defaultValue={task.executionDate?.slice(0, 10) ?? ""}
+                  disabled={isSavingCurrentTask}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">חלון זמן</span>
+                <select
+                  className="filter-select"
+                  name="timeWindow"
+                  defaultValue={currentTimeWindow}
+                  disabled={isSavingCurrentTask}
+                >
+                  <option value="">ללא חלון זמן</option>
+                  {assignmentTimeWindows.map((timeWindow) => (
+                    <option value={timeWindow} key={timeWindow}>
+                      {timeWindow}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">מתקין</span>
+                <select
+                  className="filter-select"
+                  name="installerId"
+                  defaultValue={task.installerIds[0] ?? ""}
+                  disabled={isSavingCurrentTask}
+                >
+                  <option value="">ללא מתקין</option>
+                  {installerOptions.map((installerOption) => (
+                    <option value={installerOption.id} key={installerOption.id}>
+                      {installerOption.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="task-assignment-editor__actions">
+              <button
+                className="primary-action"
+                type="submit"
+                disabled={isSavingCurrentTask}
+              >
+                {isSavingCurrentTask ? "שומר שיבוץ..." : "שמור שיבוץ"}
+              </button>
+              <button
+                className="task-row-actions__secondary"
+                type="button"
+                disabled={isSavingCurrentTask}
+                onClick={closeAssignmentEditor}
+              >
+                ביטול
+              </button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    );
+  };
+
   const renderRows = (rows: Task[]) =>
     rows.map((task) => (
-      <tr className={statusClass(task)} key={task.id}>
-        <td>
-          <div className="task-row-actions">
-            <button
-              className="task-row-actions__done"
-              type="button"
-              disabled={task.actuallyDone || task.status === "בוצע" || updatingTaskId === task.id}
-              onClick={() => handleMarkDone(task)}
-            >
-              {updatingTaskId === task.id ? "מעדכן..." : "סמן כבוצע"}
-            </button>
-            <a
-              href={`${airtableTasksTableUrl}/${task.id}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              פתח משימה
-            </a>
-          </div>
-        </td>
-        <td>{formatDate(task.executionDate)}</td>
-        <td>{task.timeWindow ?? "-"}</td>
-        <td>{task.title || "-"}</td>
-        <td>
-          <span className={task.status === "בוטל" ? "badge" : "badge badge--success"}>
-            {task.status}
-          </span>
-        </td>
-        <td>{task.taskType ?? "-"}</td>
-        <td>
-          {task.installerName ? (
-            task.installerName
-          ) : (
-            <span className="badge badge--warning">ללא מתקין</span>
-          )}
-        </td>
-        <td>{task.orderNumber ?? "-"}</td>
-        <td>{task.customerName ?? "-"}</td>
-        <td>{task.phone ?? "-"}</td>
-        <td>{task.address ?? "-"}</td>
-        <td>
-          <span className={scheduleBadgeClass(task)}>{scheduleLabel(task)}</span>
-        </td>
-        <td>{task.actuallyDone ? "כן" : "לא"}</td>
-        <td className="task-notes">{task.notes ?? task.scheduleSendError ?? "-"}</td>
-      </tr>
+      <Fragment key={task.id}>
+        <tr className={statusClass(task)}>
+          <td>
+            <div className="task-row-actions">
+              <button
+                className="task-row-actions__done"
+                type="button"
+                disabled={task.actuallyDone || task.status === "בוצע" || updatingTaskId === task.id}
+                onClick={() => handleMarkDone(task)}
+              >
+                {updatingTaskId === task.id ? "מעדכן..." : "סמן כבוצע"}
+              </button>
+              <button
+                className="task-row-actions__secondary"
+                type="button"
+                disabled={assignmentSavingTaskId === task.id}
+                onClick={() => openAssignmentEditor(task)}
+              >
+                ערוך שיבוץ
+              </button>
+              <a
+                href={`${airtableTasksTableUrl}/${task.id}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                פתח משימה
+              </a>
+            </div>
+          </td>
+          <td>{formatDate(task.executionDate)}</td>
+          <td>{task.timeWindow ?? "-"}</td>
+          <td>{task.title || "-"}</td>
+          <td>
+            <span className={task.status === "בוטל" ? "badge" : "badge badge--success"}>
+              {task.status}
+            </span>
+          </td>
+          <td>{task.taskType ?? "-"}</td>
+          <td>
+            {task.installerName ? (
+              task.installerName
+            ) : (
+              <span className="badge badge--warning">ללא מתקין</span>
+            )}
+          </td>
+          <td>{task.orderNumber ?? "-"}</td>
+          <td>{task.customerName ?? "-"}</td>
+          <td>{task.phone ?? "-"}</td>
+          <td>{task.address ?? "-"}</td>
+          <td>
+            <span className={scheduleBadgeClass(task)}>{scheduleLabel(task)}</span>
+          </td>
+          <td>{task.actuallyDone ? "כן" : "לא"}</td>
+          <td className="task-notes">{task.notes ?? task.scheduleSendError ?? "-"}</td>
+        </tr>
+        {editingTaskId === task.id ? renderAssignmentEditor(task) : null}
+      </Fragment>
     ));
 
   const renderScheduleTask = (task: Task) => (

@@ -1,6 +1,10 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { getTasks, getTaskScheduleSummary } from "@/lib/airtable/services/tasks";
+import {
+  getTaskInstallerOptions,
+  getTasks,
+  getTaskScheduleSummary,
+} from "@/lib/airtable/services/tasks";
 import { TasksTableClient } from "./TasksTableClient";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +13,10 @@ const AIRTABLE_TASKS_TABLE_URL =
   "https://airtable.com/app77CdzKEqLlhZ8d/tblsodUowDPPiOcCk";
 
 export default async function TasksPage() {
-  const tasks = await getTasks();
+  const [tasks, installerOptions] = await Promise.all([
+    getTasks(),
+    getTaskInstallerOptions(),
+  ]);
   const summary = getTaskScheduleSummary(tasks);
 
   return (
@@ -100,6 +107,7 @@ export default async function TasksPage() {
       <Card>
         <TasksTableClient
           tasks={tasks}
+          installerOptions={installerOptions}
           airtableTasksTableUrl={AIRTABLE_TASKS_TABLE_URL}
         />
       </Card>

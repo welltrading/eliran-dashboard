@@ -28,6 +28,18 @@ type RelatedInstaller = {
   phone: string | null;
 };
 
+type TaskInstallerOption = {
+  id: string;
+  name: string;
+};
+
+export type UpdateTaskAssignmentInput = {
+  taskId: string;
+  executionDate: string | null;
+  timeWindow: string | null;
+  installerId: string | null;
+};
+
 const taskStatuses: TaskStatus[] = [
   "פתוח",
   "בטיפול",
@@ -40,7 +52,12 @@ const taskStatuses: TaskStatus[] = [
 type UpdatedTaskFields = {
   fld00gbAzyZVvDWOt?: boolean;
   fldAP5bP6n8okIqec?: TaskStatus;
+  fld7wFWvaROfYEQ8B?: string | null;
+  fldGurfCRnIZNu8Dl?: string | null;
+  fldtSaIGqknI4t1IM?: string[];
 };
+
+const assignmentTimeWindows = ["10-13", "13-16", "16-19"];
 
 function textValue(value: unknown) {
   if (typeof value === "string") {
@@ -137,6 +154,19 @@ function mapInstaller(record: AirtableRecord<RawInstallerFields>): RelatedInstal
       nullableTextValue(fields.fldEKq3y8mVAqnQZu) ??
       nullableTextValue(fields.fldNuwr5rLp0Vbicu) ??
       nullableTextValue(fields.טלפון),
+  };
+}
+
+function mapInstallerOption(record: AirtableRecord<RawInstallerFields>): TaskInstallerOption | null {
+  const installer = mapInstaller(record);
+
+  if (!installer.name) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    name: installer.name,
   };
 }
 
@@ -239,6 +269,18 @@ export async function getTasks() {
   return taskRecords.map((record) => mapTask(record, ordersById, installersById));
 }
 
+export async function getTaskInstallerOptions() {
+  const records = await selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
+    cache: "no-store",
+    returnFieldsByFieldId: true,
+  });
+
+  return records
+    .map(mapInstallerOption)
+    .filter((installer): installer is TaskInstallerOption => Boolean(installer))
+    .sort((a, b) => a.name.localeCompare(b.name, "he"));
+}
+
 export async function markTaskDone(taskId: string) {
   const normalizedTaskId = taskId.trim();
 
@@ -268,6 +310,66 @@ export async function markTaskDone(taskId: string) {
         error instanceof Error
           ? error.message
           : "אירעה שגיאה לא צפויה בעת עדכון המשימה.",
+      ],
+    };
+  }
+}
+
+function normalizeOptionalText(value: string | null | undefined) {
+  const normalized = value?.trim() ?? "";
+  return normalized ? normalized : null;
+}
+
+function isValidDateInput(value: string | null) {
+  return value === null || /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+export async function updateTaskAssignment(input: UpdateTaskAssignmentInput) {
+  const taskId = input.taskId.trim();
+  const executionDate = normalizeOptionalText(input.executionDate);
+  const timeWindow = normalizeOptionalText(input.timeWindow);
+  const installerId = normalizeOptionalText(input.installerId);
+  const errors: string[] = [];
+
+  if (!taskId) {
+    errors.push("חסר מזהה משימה.");
+  }
+
+  if (!isValidDateInput(executionDate)) {
+    errors.push("תאריך הביצוע אינו תקין.");
+  }
+
+  if (timeWindow && !assignmentTimeWindows.includes(timeWindow)) {
+    errors.push("חלון הזמן אינו תקין.");
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false as const,
+      message: "יש לתקן את השדות לפני שמירת השיבוץ.",
+      errors,
+    };
+  }
+
+  try {
+    await updateRecord<UpdatedTaskFields>(airtableTables.tasks, taskId, {
+      fld7wFWvaROfYEQ8B: executionDate,
+      fldGurfCRnIZNu8Dl: timeWindow,
+      fldtSaIGqknI4t1IM: installerId ? [installerId] : [],
+    });
+
+    return {
+      ok: true as const,
+      message: "השיבוץ נשמר בהצלחה.",
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: "עדכון השיבוץ ב-Airtable נכשל.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת עדכון השיבוץ.",
       ],
     };
   }
