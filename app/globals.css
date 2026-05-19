@@ -913,6 +913,44 @@ textarea {
   min-width: 1380px;
 }
 
+.task-row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-row-actions__done {
+  min-height: 32px;
+  border: 1px solid rgba(15, 118, 110, 0.24);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.task-row-actions__done:disabled {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.task-update-error {
+  margin: 0 0 12px;
+  border: 1px solid rgba(185, 28, 28, 0.28);
+  border-radius: 8px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  padding: 12px 14px;
+  font-weight: 800;
+}
+
 .tasks-table__section-row td {
   background: var(--warning-soft);
   color: var(--warning);

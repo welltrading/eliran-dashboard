@@ -16,12 +16,14 @@ export default async function TasksPage() {
     <div className="page">
       <PageHeader
         title="משימות / התקנות"
-        description="דשבורד קריאה בלבד לתיאום התקנות, מתקינים ולוחות זמנים."
+        description="מסך עבודה לתיאום משימות, מתקינים ולוחות זמנים מתוך טבלת משימות."
       />
 
       <Card className="validation-card">
         <div className="card__body exception-panel__header">
-          <p className="muted-text">יצירה ועריכת משימות מתבצעת כרגע באירטייבל.</p>
+          <p className="muted-text">
+            ניתן לסמן משימות כבוצעו מהדשבורד. עריכה מלאה עדיין מתבצעת באירטייבל.
+          </p>
           <a
             className="primary-action"
             href={AIRTABLE_TASKS_TABLE_URL}

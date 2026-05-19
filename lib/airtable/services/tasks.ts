@@ -2,6 +2,8 @@ import "server-only";
 import type { Task, TaskScheduleSummary, TaskStatus } from "@/lib/types";
 import { selectRecords } from "../client";
 import type { RawInstallerFields, RawOrderFields, RawTaskFields } from "../raw-types";
+import { airtableTables } from "../tables";
+import { updateRecord } from "../write-client";
 
 const TASKS_TABLE_ID = "tblsodUowDPPiOcCk";
 const ORDERS_TABLE_ID = "tblJYbxBXWUkAoI7m";
@@ -34,6 +36,11 @@ const taskStatuses: TaskStatus[] = [
   "בוצע",
   "בוטל",
 ];
+
+type UpdatedTaskFields = {
+  fld00gbAzyZVvDWOt?: boolean;
+  fldAP5bP6n8okIqec?: TaskStatus;
+};
 
 function textValue(value: unknown) {
   if (typeof value === "string") {
@@ -209,12 +216,15 @@ export function getTaskScheduleSummary(tasks: Task[]): TaskScheduleSummary {
 export async function getTasks() {
   const [taskRecords, orderRecords, installerRecords] = await Promise.all([
     selectRecords<RawTaskFields>(TASKS_TABLE_ID, {
+      cache: "no-store",
       returnFieldsByFieldId: true,
     }),
     selectRecords<RawOrderFields>(ORDERS_TABLE_ID, {
+      cache: "no-store",
       returnFieldsByFieldId: true,
     }),
     selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
+      cache: "no-store",
       returnFieldsByFieldId: true,
     }),
   ]);
@@ -227,4 +237,38 @@ export async function getTasks() {
   );
 
   return taskRecords.map((record) => mapTask(record, ordersById, installersById));
+}
+
+export async function markTaskDone(taskId: string) {
+  const normalizedTaskId = taskId.trim();
+
+  if (!normalizedTaskId) {
+    return {
+      ok: false as const,
+      message: "חסרה משימה לעדכון.",
+      errors: ["חסר מזהה משימה."],
+    };
+  }
+
+  try {
+    await updateRecord<UpdatedTaskFields>(airtableTables.tasks, normalizedTaskId, {
+      fld00gbAzyZVvDWOt: true,
+      fldAP5bP6n8okIqec: "בוצע",
+    });
+
+    return {
+      ok: true as const,
+      message: "המשימה סומנה כבוצעה.",
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: "עדכון המשימה ב-Airtable נכשל.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת עדכון המשימה.",
+      ],
+    };
+  }
 }

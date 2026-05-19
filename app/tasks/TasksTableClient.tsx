@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import type { Task, TaskStatus } from "@/lib/types";
+import { markTaskDoneAction } from "./actions";
 
 type DateFilter = "הכל" | "היום" | "מחר" | "השבוע" | "ללא תאריך";
 type ScheduleSentFilter = "הכל" | "נשלח" | "לא נשלח" | "שגיאה";
@@ -317,6 +319,8 @@ export function TasksTableClient({
   tasks,
   airtableTasksTableUrl,
 }: TasksTableClientProps) {
+  const router = useRouter();
+  const [isMarkingDone, startMarkingDoneTransition] = useTransition();
   const [scheduleView, setScheduleView] = useState<ScheduleView>("היום");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("הכל");
@@ -325,6 +329,8 @@ export function TasksTableClient({
   const [scheduleSent, setScheduleSent] = useState<ScheduleSentFilter>("הכל");
   const [selectedCalendarSlot, setSelectedCalendarSlot] =
     useState<CalendarSelection | null>(null);
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [taskUpdateError, setTaskUpdateError] = useState<string | null>(null);
 
   const statuses = useMemo(() => {
     return Array.from(new Set(tasks.map((task) => task.status))).sort((a, b) =>
@@ -452,17 +458,51 @@ export function TasksTableClient({
   const scheduledTasks = filteredTasks.filter((task) => task.executionDate);
   const unscheduledTasks = filteredTasks.filter((task) => !task.executionDate);
 
+  function handleMarkDone(task: Task) {
+    if (task.actuallyDone || task.status === "בוצע" || isMarkingDone) {
+      return;
+    }
+
+    setTaskUpdateError(null);
+    setUpdatingTaskId(task.id);
+
+    startMarkingDoneTransition(async () => {
+      const result = await markTaskDoneAction(task.id);
+
+      if (result.ok) {
+        router.refresh();
+        setUpdatingTaskId(null);
+        return;
+      }
+
+      setTaskUpdateError(
+        [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+      );
+      setUpdatingTaskId(null);
+    });
+  }
+
   const renderRows = (rows: Task[]) =>
     rows.map((task) => (
       <tr className={statusClass(task)} key={task.id}>
         <td>
-          <a
-            href={`${airtableTasksTableUrl}/${task.id}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            פתח משימה
-          </a>
+          <div className="task-row-actions">
+            <button
+              className="task-row-actions__done"
+              type="button"
+              disabled={task.actuallyDone || task.status === "בוצע" || updatingTaskId === task.id}
+              onClick={() => handleMarkDone(task)}
+            >
+              {updatingTaskId === task.id ? "מעדכן..." : "סמן כבוצע"}
+            </button>
+            <a
+              href={`${airtableTasksTableUrl}/${task.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              פתח משימה
+            </a>
+          </div>
         </td>
         <td>{formatDate(task.executionDate)}</td>
         <td>{task.timeWindow ?? "-"}</td>
@@ -803,6 +843,12 @@ export function TasksTableClient({
       </div>
 
       <div className="table-wrap">
+        {taskUpdateError ? (
+          <div className="task-update-error" role="alert" aria-live="assertive">
+            {taskUpdateError}
+          </div>
+        ) : null}
+
         {filteredTasks.length > 0 ? (
           <table className="data-table tasks-table">
             <thead>
