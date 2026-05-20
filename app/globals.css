@@ -1065,7 +1065,17 @@ textarea {
 }
 
 .installer-monthly-report__table {
-  min-width: 820px;
+  min-width: 1080px;
+}
+
+.installer-monthly-report__payment-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .installer-monthly-report__detail-row td {
@@ -1215,6 +1225,11 @@ textarea {
 .badge--danger {
   background: var(--danger-soft);
   color: var(--danger);
+}
+
+.badge--muted {
+  background: var(--surface-muted);
+  color: var(--muted);
 }
 
 .form-layout {

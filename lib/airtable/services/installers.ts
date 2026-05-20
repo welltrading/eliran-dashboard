@@ -5,6 +5,8 @@ import type {
   Installer,
   InstallerMonthlyPaymentDetail,
   InstallerMonthlyPaymentReport,
+  InstallerMonthlyPaymentRecordSnapshot,
+  InstallerMonthlyPaymentRecordState,
   InstallerMonthlyPaymentSummary,
   InstallerRate,
   InstallerSummary,
@@ -16,6 +18,7 @@ import { selectRecords } from "../client";
 import type {
   RawExecutionApprovalFields,
   RawInstallerFields,
+  RawInstallerMonthlyPaymentFields,
   RawInstallerRateFields,
   RawInstallerTaskFields,
 } from "../raw-types";
@@ -25,6 +28,7 @@ const INSTALLERS_TABLE_ID = "tblNj2W8WJWbeG1sl";
 const TASKS_TABLE_ID = "tblsodUowDPPiOcCk";
 const APPROVALS_TABLE_ID = "tbl6z2mmkNpEFI6jx";
 const RATES_TABLE_ID = "tbl4guJMDoluPnHLD";
+const INSTALLER_MONTHLY_PAYMENTS_TABLE_ID = "tbl614tWbo2VrpS8d";
 
 type AirtableRecord<TFields> = {
   id: string;
@@ -363,10 +367,77 @@ function mapMonthlyPaymentDetail(
   };
 }
 
+function paymentRecordKey(installerId: string, airtableMonth: string) {
+  return `${installerId}|${airtableMonth}`;
+}
+
+function mapInstallerMonthlyPaymentRecord(
+  record: AirtableRecord<RawInstallerMonthlyPaymentFields>,
+  fallbackKey: string,
+): InstallerMonthlyPaymentRecordSnapshot {
+  const fields = record.fields;
+
+  return {
+    id: record.id,
+    name: nullableTextValue(fields.fldcM0YGpLHWIg4PZ),
+    paymentKey: textValue(fields.fldmSOmxfRd8UrDxg) || fallbackKey,
+    status: nullableTextValue(fields.fldS6XbWsE6uMtPqp),
+    amount: numberValue(fields.fldXjjBCkocB0DVJ7),
+    paymentDate: nullableTextValue(fields.fldF8uamPnjnRE5xF),
+    includedApprovalCount: linkedRecordIds(fields.fldHso8OGch2Bw937).length,
+  };
+}
+
+function buildMonthlyPaymentRecordsByKey(
+  records: AirtableRecord<RawInstallerMonthlyPaymentFields>[],
+) {
+  const byKey = new Map<string, InstallerMonthlyPaymentRecordSnapshot[]>();
+
+  records.forEach((record) => {
+    const explicitKey = textValue(record.fields.fldmSOmxfRd8UrDxg);
+    const installerIds = linkedRecordIds(record.fields.fld594iX5aq1LoMU5);
+    const month = textValue(record.fields.fldjSy3ma0Mt0PAPQ);
+    const fallbackKeys =
+      !explicitKey && month
+        ? installerIds.map((installerId) => paymentRecordKey(installerId, month))
+        : [];
+    const keys = explicitKey ? [explicitKey] : fallbackKeys;
+
+    keys.forEach((key) => {
+      const mappedRecord = mapInstallerMonthlyPaymentRecord(record, key);
+      byKey.set(key, [...(byKey.get(key) ?? []), mappedRecord]);
+    });
+  });
+
+  return byKey;
+}
+
+function monthlyPaymentRecordState(
+  records: InstallerMonthlyPaymentRecordSnapshot[] | undefined,
+): InstallerMonthlyPaymentRecordState {
+  if (!records || records.length === 0) {
+    return { kind: "missing" };
+  }
+
+  if (records.length === 1) {
+    return {
+      kind: "existing",
+      record: records[0],
+    };
+  }
+
+  return {
+    kind: "duplicate",
+    records,
+  };
+}
+
 function buildMonthlyReportByInstaller(
   approvals: AirtableRecord<RawExecutionApprovalFields>[],
   installerById: Map<string, string>,
   taskById: Map<string, AirtableRecord<RawInstallerTaskFields>>,
+  monthlyPaymentRecordsByKey: Map<string, InstallerMonthlyPaymentRecordSnapshot[]>,
+  airtableMonth: string,
 ): InstallerMonthlyPaymentSummary[] {
   const byInstaller = new Map<string, MonthlyPaymentAccumulator>();
 
@@ -392,6 +463,9 @@ function buildMonthlyReportByInstaller(
       installerName: item.installerName,
       approvalCount: item.details.length,
       totalAmount: item.totalAmount,
+      monthlyPaymentRecord: monthlyPaymentRecordState(
+        monthlyPaymentRecordsByKey.get(paymentRecordKey(item.installerId, airtableMonth)),
+      ),
       details: item.details.sort((a, b) => {
         if (a.installationDate && b.installationDate) {
           return a.installationDate.localeCompare(b.installationDate);
@@ -715,7 +789,7 @@ export async function getInstallerMonthlyPaymentReport(
 ): Promise<InstallerMonthlyPaymentReport> {
   const selectedMonth = normalizePaymentMonth(paymentMonth);
   const airtableMonth = airtablePaymentMonth(selectedMonth);
-  const [approvalRecords, installerRecords, taskRecords] = await Promise.all([
+  const [approvalRecords, installerRecords, taskRecords, monthlyPaymentRecords] = await Promise.all([
     selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
       cache: "no-store",
       returnFieldsByFieldId: true,
@@ -725,6 +799,10 @@ export async function getInstallerMonthlyPaymentReport(
       returnFieldsByFieldId: true,
     }),
     selectRecords<RawInstallerTaskFields>(TASKS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerMonthlyPaymentFields>(INSTALLER_MONTHLY_PAYMENTS_TABLE_ID, {
       cache: "no-store",
       returnFieldsByFieldId: true,
     }),
@@ -742,10 +820,14 @@ export async function getInstallerMonthlyPaymentReport(
       isValidPaymentApproval(approval.fields) &&
       textValue(approval.fields.fld2wVyMe3wyhYsqK) === airtableMonth,
   );
+  const monthlyPaymentRecordsByKey =
+    buildMonthlyPaymentRecordsByKey(monthlyPaymentRecords);
   const installerSummaries = buildMonthlyReportByInstaller(
     validMonthlyApprovals,
     installerById,
     taskById,
+    monthlyPaymentRecordsByKey,
+    airtableMonth,
   );
 
   return {

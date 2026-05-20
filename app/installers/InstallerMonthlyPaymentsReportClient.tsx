@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
-import type { InstallerMonthlyPaymentReport } from "@/lib/types";
+import type {
+  InstallerMonthlyPaymentRecordState,
+  InstallerMonthlyPaymentReport,
+} from "@/lib/types";
 
 type InstallerMonthlyPaymentsReportClientProps = {
   report: InstallerMonthlyPaymentReport;
@@ -30,6 +33,38 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("he-IL", {
     timeZone: "Asia/Jerusalem",
   }).format(date);
+}
+
+function renderMonthlyPaymentRecordState(state: InstallerMonthlyPaymentRecordState) {
+  if (state.kind === "missing") {
+    return (
+      <div className="installer-monthly-report__payment-state">
+        <span className="badge badge--muted">לא נוצרה רשומת תשלום</span>
+      </div>
+    );
+  }
+
+  if (state.kind === "duplicate") {
+    return (
+      <div className="installer-monthly-report__payment-state">
+        <span className="badge badge--danger">כפילות רשומות תשלום חודשיות</span>
+        <span>{state.records.length} רשומות</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="installer-monthly-report__payment-state">
+      <span className="badge badge--success">
+        {state.record.status ?? "ללא סטטוס"}
+      </span>
+      <span>{formatCurrency(state.record.amount)}</span>
+      <span>{state.record.includedApprovalCount} אישורים כלולים</span>
+      {state.record.paymentDate ? (
+        <span>תשלום: {formatDate(state.record.paymentDate)}</span>
+      ) : null}
+    </div>
+  );
 }
 
 export function InstallerMonthlyPaymentsReportClient({
@@ -84,6 +119,7 @@ export function InstallerMonthlyPaymentsReportClient({
                 <th>מתקין</th>
                 <th>כמות אישורים תקפים</th>
                 <th>סה"כ לתשלום</th>
+                <th>רשומת תשלום חודשית</th>
                 <th>פעולה</th>
               </tr>
             </thead>
@@ -97,6 +133,11 @@ export function InstallerMonthlyPaymentsReportClient({
                       <td>{installer.installerName}</td>
                       <td>{installer.approvalCount}</td>
                       <td>{formatCurrency(installer.totalAmount)}</td>
+                      <td>
+                        {renderMonthlyPaymentRecordState(
+                          installer.monthlyPaymentRecord,
+                        )}
+                      </td>
                       <td>
                         <button
                           className="task-row-actions__secondary"
@@ -115,7 +156,7 @@ export function InstallerMonthlyPaymentsReportClient({
                         className="installer-monthly-report__detail-row"
                         key={`${installer.installerId}-details`}
                       >
-                        <td colSpan={4}>
+                        <td colSpan={5}>
                           <table className="data-table installer-monthly-report__details-table">
                             <thead>
                               <tr>

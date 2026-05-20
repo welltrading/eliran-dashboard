@@ -62,6 +62,18 @@ export type RawInstallerRateFields = {
   fldB06onBocNuTZmw?: unknown;
 };
 
+export type RawInstallerMonthlyPaymentFields = {
+  fldcM0YGpLHWIg4PZ?: unknown;
+  fldmSOmxfRd8UrDxg?: unknown;
+  fld594iX5aq1LoMU5?: unknown;
+  fldjSy3ma0Mt0PAPQ?: unknown;
+  fldXjjBCkocB0DVJ7?: unknown;
+  fldS6XbWsE6uMtPqp?: unknown;
+  fldF8uamPnjnRE5xF?: unknown;
+  fldHso8OGch2Bw937?: unknown;
+  fldDwt9bGfyl20oSF?: unknown;
+};
+
 export type RawOrderFields = {
   fldDrP4MqsxV6EtJd?: unknown;
   fldZEobEKEQtMtoGV?: unknown;

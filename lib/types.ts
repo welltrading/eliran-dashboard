@@ -102,11 +102,41 @@ export type InstallerMonthlyPaymentDetail = {
   approvalStatus: string;
 };
 
+export type InstallerMonthlyPaymentRecordStatus =
+  | "פתוח"
+  | "שולם"
+  | "בוטל / לא לתשלום"
+  | string;
+
+export type InstallerMonthlyPaymentRecordSnapshot = {
+  id: string;
+  name: string | null;
+  paymentKey: string;
+  status: InstallerMonthlyPaymentRecordStatus | null;
+  amount: number;
+  paymentDate: string | null;
+  includedApprovalCount: number;
+};
+
+export type InstallerMonthlyPaymentRecordState =
+  | {
+      kind: "missing";
+    }
+  | {
+      kind: "existing";
+      record: InstallerMonthlyPaymentRecordSnapshot;
+    }
+  | {
+      kind: "duplicate";
+      records: InstallerMonthlyPaymentRecordSnapshot[];
+    };
+
 export type InstallerMonthlyPaymentSummary = {
   installerId: string;
   installerName: string;
   approvalCount: number;
   totalAmount: number;
+  monthlyPaymentRecord: InstallerMonthlyPaymentRecordState;
   details: InstallerMonthlyPaymentDetail[];
 };
 
