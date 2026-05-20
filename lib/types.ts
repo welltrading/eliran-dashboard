@@ -73,6 +73,23 @@ export type PendingPaymentApprovalTask = {
   existingApprovalId: string | null;
 };
 
+export type InstallerRate = {
+  id: string;
+  taskType: string;
+  price: number;
+  active: boolean;
+  linkedTaskCount: number;
+};
+
+export type TaskWithoutRate = {
+  id: string;
+  executionDate: string | null;
+  customerName: string | null;
+  orderNumber: string | null;
+  taskType: string | null;
+  installerName: string | null;
+};
+
 export type Order = {
   id: string;
   orderNumber: string;

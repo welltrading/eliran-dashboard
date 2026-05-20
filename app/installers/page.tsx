@@ -1,9 +1,14 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import {
+  getInstallerRatesControlData,
   getInstallers,
   getPendingPaymentApprovalTasks,
 } from "@/lib/airtable/services/installers";
+import {
+  InstallerRatesTable,
+  TasksWithoutRateTable,
+} from "./InstallerRatesControl";
 import { InstallersTableClient } from "./InstallersTableClient";
 import { PendingPaymentApprovalsClient } from "./PendingPaymentApprovalsClient";
 
@@ -21,9 +26,14 @@ function formatCurrency(value: number) {
 }
 
 export default async function InstallersPage() {
-  const [{ installers, summary }, pendingPaymentApprovalTasks] = await Promise.all([
+  const [
+    { installers, summary },
+    pendingPaymentApprovalTasks,
+    { rates, tasksWithoutRate },
+  ] = await Promise.all([
     getInstallers(),
     getPendingPaymentApprovalTasks(),
+    getInstallerRatesControlData(),
   ]);
 
   return (
@@ -92,7 +102,15 @@ export default async function InstallersPage() {
       </div>
 
       <Card>
+        <TasksWithoutRateTable tasks={tasksWithoutRate} />
+      </Card>
+
+      <Card>
         <PendingPaymentApprovalsClient tasks={pendingPaymentApprovalTasks} />
+      </Card>
+
+      <Card>
+        <InstallerRatesTable rates={rates} />
       </Card>
 
       <Card>

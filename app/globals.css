@@ -1052,6 +1052,14 @@ textarea {
   min-width: 980px;
 }
 
+.installer-rates__missing-table {
+  min-width: 920px;
+}
+
+.installer-rates__table {
+  min-width: 760px;
+}
+
 .task-notes {
   max-width: 260px;
   white-space: normal !important;

@@ -51,6 +51,13 @@ export type RawExecutionApprovalFields = {
   fld2wVyMe3wyhYsqK?: unknown;
 };
 
+export type RawInstallerRateFields = {
+  fldpoNfga22gQZsau?: unknown;
+  fldB8SlJKO4BbLRbE?: unknown;
+  fldm3OVYRryVl6bvx?: unknown;
+  fldB06onBocNuTZmw?: unknown;
+};
+
 export type RawOrderFields = {
   fldDrP4MqsxV6EtJd?: unknown;
   fldZEobEKEQtMtoGV?: unknown;

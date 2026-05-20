@@ -1,13 +1,16 @@
 import "server-only";
 import type {
   Installer,
+  InstallerRate,
   InstallerSummary,
   PendingPaymentApprovalTask,
+  TaskWithoutRate,
 } from "@/lib/types";
 import { selectRecords } from "../client";
 import type {
   RawExecutionApprovalFields,
   RawInstallerFields,
+  RawInstallerRateFields,
   RawInstallerTaskFields,
 } from "../raw-types";
 import { createRecord, updateRecord } from "../write-client";
@@ -15,6 +18,7 @@ import { createRecord, updateRecord } from "../write-client";
 const INSTALLERS_TABLE_ID = "tblNj2W8WJWbeG1sl";
 const TASKS_TABLE_ID = "tblsodUowDPPiOcCk";
 const APPROVALS_TABLE_ID = "tbl6z2mmkNpEFI6jx";
+const RATES_TABLE_ID = "tbl4guJMDoluPnHLD";
 
 type AirtableRecord<TFields> = {
   id: string;
@@ -242,6 +246,54 @@ function mapPendingPaymentApprovalTask(
   };
 }
 
+function mapInstallerRate(
+  record: AirtableRecord<RawInstallerRateFields>,
+): InstallerRate {
+  const fields = record.fields;
+
+  return {
+    id: record.id,
+    taskType: textValue(fields.fldpoNfga22gQZsau) || "ללא סוג משימה",
+    price: numberValue(fields.fldB8SlJKO4BbLRbE),
+    active: booleanValue(fields.fldm3OVYRryVl6bvx),
+    linkedTaskCount: linkedRecordIds(fields.fldB06onBocNuTZmw).length,
+  };
+}
+
+function installerNameForTask(
+  task: AirtableRecord<RawInstallerTaskFields>,
+  installerById: Map<string, string>,
+) {
+  const names = linkedRecordIds(task.fields.fldtSaIGqknI4t1IM)
+    .map((installerId) => installerById.get(installerId))
+    .filter((name): name is string => Boolean(name));
+
+  return names.length > 0 ? names.join(", ") : null;
+}
+
+function mapTaskWithoutRate(
+  task: AirtableRecord<RawInstallerTaskFields>,
+  installerById: Map<string, string>,
+): TaskWithoutRate | null {
+  const fields = task.fields;
+  const hasInstaller = linkedRecordIds(fields.fldtSaIGqknI4t1IM).length > 0;
+  const isDone = booleanValue(fields.fld00gbAzyZVvDWOt);
+  const price = nullableNumberValue(fields.fldSh9sHtkiOTkIwd);
+
+  if ((!hasInstaller && !isDone) || price) {
+    return null;
+  }
+
+  return {
+    id: task.id,
+    executionDate: nullableTextValue(fields.fld7wFWvaROfYEQ8B),
+    customerName: firstListText(fields.fldgntnzuRgEBSfdj),
+    orderNumber: firstListText(fields.fldJktpQOU9RRgy1t),
+    taskType: taskTypeLabel(fields),
+    installerName: installerNameForTask(task, installerById),
+  };
+}
+
 function mapInstaller(
   record: AirtableRecord<RawInstallerFields>,
   taskCounts: Map<string, InstallerTaskCounts>,
@@ -434,6 +486,64 @@ export async function getPendingPaymentApprovalTasks() {
 
       return a.installerName.localeCompare(b.installerName, "he");
     });
+}
+
+export async function getInstallerRatesControlData() {
+  const [rateRecords, taskRecords, installerRecords] = await Promise.all([
+    selectRecords<RawInstallerRateFields>(RATES_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerTaskFields>(TASKS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+  ]);
+
+  const installerById = new Map(
+    installerRecords.map((record) => [
+      record.id,
+      textValue(record.fields.fldOSaSnJIAr43Btv) || textValue(record.fields["שם מתקין"]),
+    ]),
+  );
+
+  const rates = rateRecords
+    .map(mapInstallerRate)
+    .sort((a, b) => {
+      if (a.active !== b.active) {
+        return a.active ? -1 : 1;
+      }
+
+      return a.taskType.localeCompare(b.taskType, "he");
+    });
+
+  const tasksWithoutRate = taskRecords
+    .map((task) => mapTaskWithoutRate(task, installerById))
+    .filter((task): task is TaskWithoutRate => Boolean(task))
+    .sort((a, b) => {
+      if (a.executionDate && b.executionDate && a.executionDate !== b.executionDate) {
+        return a.executionDate.localeCompare(b.executionDate);
+      }
+
+      if (!a.executionDate && b.executionDate) {
+        return 1;
+      }
+
+      if (a.executionDate && !b.executionDate) {
+        return -1;
+      }
+
+      return (a.customerName ?? "").localeCompare(b.customerName ?? "", "he");
+    });
+
+  return {
+    rates,
+    tasksWithoutRate,
+  };
 }
 
 export async function approveTaskPayment(taskId: string) {
