@@ -1,11 +1,14 @@
 import "server-only";
 import type {
+  ApprovalMissingAmountIssue,
+  DuplicateTaskApprovalIssue,
   Installer,
   InstallerMonthlyPaymentDetail,
   InstallerMonthlyPaymentReport,
   InstallerMonthlyPaymentSummary,
   InstallerRate,
   InstallerSummary,
+  PaymentReliabilityControlData,
   PendingPaymentApprovalTask,
   TaskWithoutRate,
 } from "@/lib/types";
@@ -414,6 +417,47 @@ function buildMonthlyReportByInstaller(
     });
 }
 
+function mapMissingAmountApprovalIssue(
+  approval: AirtableRecord<RawExecutionApprovalFields>,
+  installerById: Map<string, string>,
+  taskById: Map<string, AirtableRecord<RawInstallerTaskFields>>,
+): ApprovalMissingAmountIssue {
+  const fields = approval.fields;
+  const taskId = linkedRecordIds(fields.fldpAZh1st8qRqA7n)[0] ?? null;
+  const installerId = linkedRecordIds(fields.fldTjEOiF0qd1FgEd)[0];
+  const task = taskId ? taskById.get(taskId) : undefined;
+
+  return {
+    id: approval.id,
+    approvalId: approval.id,
+    installerName: installerId ? installerById.get(installerId) ?? null : null,
+    installationDate: nullableTextValue(fields.fld82nUwa5hZGSDlF),
+    taskId,
+    orderNumber:
+      (task ? firstListText(task.fields.fldJktpQOU9RRgy1t) : null) ??
+      firstListText(fields.flds6B6t8maAaevga),
+    amount: numberValue(fields.fldsMGqafeCRlN7zo),
+    approvalStatus: textValue(fields.fldmg9acRqIp0zim0) || "-",
+  };
+}
+
+function buildDuplicateTaskApprovalIssues(
+  approvalsByTaskId: Map<string, AirtableRecord<RawExecutionApprovalFields>[]>,
+): DuplicateTaskApprovalIssue[] {
+  return Array.from(approvalsByTaskId.entries())
+    .filter(([, approvals]) => approvals.length > 1)
+    .map(([taskId, approvals]) => ({
+      taskId,
+      approvalCount: approvals.length,
+      approvalIds: approvals.map((approval) => approval.id),
+      statuses: approvals.map((approval) => textValue(approval.fields.fldmg9acRqIp0zim0) || "-"),
+      validApprovalCount: approvals.filter((approval) =>
+        isValidPaymentApproval(approval.fields),
+      ).length,
+    }))
+    .sort((a, b) => b.validApprovalCount - a.validApprovalCount || b.approvalCount - a.approvalCount);
+}
+
 function mapInstaller(
   record: AirtableRecord<RawInstallerFields>,
   taskCounts: Map<string, InstallerTaskCounts>,
@@ -713,6 +757,77 @@ export async function getInstallerMonthlyPaymentReport(
       (total, installer) => total + installer.totalAmount,
       0,
     ),
+  };
+}
+
+export async function getPaymentReliabilityControlData(): Promise<PaymentReliabilityControlData> {
+  const [approvalRecords, taskRecords, installerRecords] = await Promise.all([
+    selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerTaskFields>(TASKS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+  ]);
+
+  const installerById = new Map(
+    installerRecords.map((record) => [
+      record.id,
+      textValue(record.fields.fldOSaSnJIAr43Btv) || textValue(record.fields["שם מתקין"]),
+    ]),
+  );
+  const taskById = buildTaskById(taskRecords);
+  const approvalsByTaskId = buildApprovalsByTaskId(approvalRecords);
+  const missingAmountApprovals = approvalRecords
+    .filter(
+      (approval) =>
+        isValidPaymentApproval(approval.fields) &&
+        numberValue(approval.fields.fldsMGqafeCRlN7zo) <= 0,
+    )
+    .map((approval) =>
+      mapMissingAmountApprovalIssue(approval, installerById, taskById),
+    )
+    .sort((a, b) => {
+      if (a.installationDate && b.installationDate) {
+        return a.installationDate.localeCompare(b.installationDate);
+      }
+
+      if (!a.installationDate && b.installationDate) {
+        return 1;
+      }
+
+      if (a.installationDate && !b.installationDate) {
+        return -1;
+      }
+
+      return (a.installerName ?? "").localeCompare(b.installerName ?? "", "he");
+    });
+  const duplicateTaskApprovals = buildDuplicateTaskApprovalIssues(approvalsByTaskId);
+  const pendingApprovalTasks = taskRecords
+    .map((task) =>
+      mapPendingPaymentApprovalTask(task, installerById, approvalsByTaskId),
+    )
+    .filter((task): task is PendingPaymentApprovalTask => Boolean(task));
+  const tasksWithoutRate = taskRecords
+    .map((task) => mapTaskWithoutRate(task, installerById))
+    .filter((task): task is TaskWithoutRate => Boolean(task));
+
+  return {
+    missingAmountApprovals,
+    duplicateTaskApprovals,
+    pendingApprovalTasks,
+    tasksWithoutRate,
+    totalIssueCount:
+      missingAmountApprovals.length +
+      duplicateTaskApprovals.length +
+      pendingApprovalTasks.length +
+      tasksWithoutRate.length,
   };
 }
 

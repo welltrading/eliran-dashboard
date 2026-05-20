@@ -4,6 +4,7 @@ import {
   getInstallerRatesControlData,
   getInstallerMonthlyPaymentReport,
   getInstallers,
+  getPaymentReliabilityControlData,
   getPendingPaymentApprovalTasks,
 } from "@/lib/airtable/services/installers";
 import {
@@ -12,6 +13,7 @@ import {
 } from "./InstallerRatesControl";
 import { InstallerMonthlyPaymentsReportClient } from "./InstallerMonthlyPaymentsReportClient";
 import { InstallersTableClient } from "./InstallersTableClient";
+import { PaymentReliabilityControl } from "./PaymentReliabilityControl";
 import { PendingPaymentApprovalsClient } from "./PendingPaymentApprovalsClient";
 
 export const dynamic = "force-dynamic";
@@ -43,11 +45,13 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
     pendingPaymentApprovalTasks,
     { rates, tasksWithoutRate },
     monthlyPaymentReport,
+    paymentReliabilityControlData,
   ] = await Promise.all([
     getInstallers(),
     getPendingPaymentApprovalTasks(),
     getInstallerRatesControlData(),
     getInstallerMonthlyPaymentReport(requestedPaymentMonth),
+    getPaymentReliabilityControlData(),
   ]);
 
   return (
@@ -129,6 +133,10 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
 
       <Card>
         <InstallerMonthlyPaymentsReportClient report={monthlyPaymentReport} />
+      </Card>
+
+      <Card>
+        <PaymentReliabilityControl data={paymentReliabilityControlData} />
       </Card>
 
       <Card>

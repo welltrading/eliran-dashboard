@@ -1083,6 +1083,66 @@ textarea {
   gap: 8px;
 }
 
+.payment-reliability {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.payment-reliability__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.payment-reliability__summary div {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 12px;
+}
+
+.payment-reliability__summary strong {
+  display: block;
+  font-size: 24px;
+}
+
+.payment-reliability__summary span,
+.payment-reliability__ok {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.payment-reliability__section {
+  display: grid;
+  gap: 10px;
+}
+
+.payment-reliability__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.payment-reliability__section-header h3,
+.payment-reliability__ok {
+  margin: 0;
+}
+
+.payment-reliability__section-header h3 {
+  font-size: 16px;
+}
+
+.payment-reliability__table {
+  min-width: 980px;
+}
+
+.payment-reliability__table td {
+  white-space: normal;
+}
+
 .task-notes {
   max-width: 260px;
   white-space: normal !important;

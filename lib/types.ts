@@ -118,6 +118,33 @@ export type InstallerMonthlyPaymentReport = {
   totalAmount: number;
 };
 
+export type ApprovalMissingAmountIssue = {
+  id: string;
+  approvalId: string;
+  installerName: string | null;
+  installationDate: string | null;
+  taskId: string | null;
+  orderNumber: string | null;
+  amount: number;
+  approvalStatus: string;
+};
+
+export type DuplicateTaskApprovalIssue = {
+  taskId: string;
+  approvalCount: number;
+  approvalIds: string[];
+  statuses: string[];
+  validApprovalCount: number;
+};
+
+export type PaymentReliabilityControlData = {
+  missingAmountApprovals: ApprovalMissingAmountIssue[];
+  duplicateTaskApprovals: DuplicateTaskApprovalIssue[];
+  pendingApprovalTasks: PendingPaymentApprovalTask[];
+  tasksWithoutRate: TaskWithoutRate[];
+  totalIssueCount: number;
+};
+
 export type Order = {
   id: string;
   orderNumber: string;
