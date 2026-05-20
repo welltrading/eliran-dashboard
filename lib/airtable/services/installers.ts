@@ -1,6 +1,9 @@
 import "server-only";
 import type {
   Installer,
+  InstallerMonthlyPaymentDetail,
+  InstallerMonthlyPaymentReport,
+  InstallerMonthlyPaymentSummary,
   InstallerRate,
   InstallerSummary,
   PendingPaymentApprovalTask,
@@ -32,6 +35,13 @@ type InstallerTaskCounts = {
 
 type InstallerPaymentTotals = {
   approvedPaymentAmount: number;
+};
+
+type MonthlyPaymentAccumulator = {
+  installerId: string;
+  installerName: string;
+  details: InstallerMonthlyPaymentDetail[];
+  totalAmount: number;
 };
 
 type ApprovalPaymentFields = {
@@ -117,6 +127,31 @@ function listValue(value: unknown) {
 
 function firstListText(value: unknown) {
   return listValue(value)[0] ?? null;
+}
+
+function monthKeyInTimeZone(value: Date, timeZone = "Asia/Jerusalem") {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(value);
+  const year = parts.find((part) => part.type === "year")?.value ?? String(value.getFullYear());
+  const month =
+    parts.find((part) => part.type === "month")?.value ??
+    String(value.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`;
+}
+
+function normalizePaymentMonth(value?: string | null) {
+  return value && /^\d{4}-\d{2}$/.test(value)
+    ? value
+    : monthKeyInTimeZone(new Date());
+}
+
+function airtablePaymentMonth(value: string) {
+  const [year, month] = normalizePaymentMonth(value).split("-");
+  return `${month}-${year}`;
 }
 
 function taskTypeLabel(fields: RawInstallerTaskFields) {
@@ -215,6 +250,10 @@ function hasValidPaymentApproval(
   return approvals.some((approval) => isValidPaymentApproval(approval.fields));
 }
 
+function buildTaskById(tasks: AirtableRecord<RawInstallerTaskFields>[]) {
+  return new Map(tasks.map((task) => [task.id, task]));
+}
+
 function mapPendingPaymentApprovalTask(
   task: AirtableRecord<RawInstallerTaskFields>,
   installerById: Map<string, string>,
@@ -292,6 +331,87 @@ function mapTaskWithoutRate(
     taskType: taskTypeLabel(fields),
     installerName: installerNameForTask(task, installerById),
   };
+}
+
+function mapMonthlyPaymentDetail(
+  approval: AirtableRecord<RawExecutionApprovalFields>,
+  installerId: string,
+  taskById: Map<string, AirtableRecord<RawInstallerTaskFields>>,
+): InstallerMonthlyPaymentDetail {
+  const fields = approval.fields;
+  const taskId = linkedRecordIds(fields.fldpAZh1st8qRqA7n)[0];
+  const task = taskId ? taskById.get(taskId) : undefined;
+  const amount = numberValue(fields.fldsMGqafeCRlN7zo);
+
+  return {
+    id: `${approval.id}-${installerId}`,
+    approvalId: approval.id,
+    installationDate: nullableTextValue(fields.fld82nUwa5hZGSDlF),
+    orderNumber:
+      (task ? firstListText(task.fields.fldJktpQOU9RRgy1t) : null) ??
+      firstListText(fields.flds6B6t8maAaevga),
+    customerName: task ? firstListText(task.fields.fldgntnzuRgEBSfdj) : null,
+    taskType:
+      firstListText(fields.fldmOfBYtD9CjxDx6) ??
+      (task ? taskTypeLabel(task.fields) : null),
+    amount,
+    amountMissing: amount <= 0,
+    approvalStatus: textValue(fields.fldmg9acRqIp0zim0) || "-",
+  };
+}
+
+function buildMonthlyReportByInstaller(
+  approvals: AirtableRecord<RawExecutionApprovalFields>[],
+  installerById: Map<string, string>,
+  taskById: Map<string, AirtableRecord<RawInstallerTaskFields>>,
+): InstallerMonthlyPaymentSummary[] {
+  const byInstaller = new Map<string, MonthlyPaymentAccumulator>();
+
+  approvals.forEach((approval) => {
+    linkedRecordIds(approval.fields.fldTjEOiF0qd1FgEd).forEach((installerId) => {
+      const current = byInstaller.get(installerId) ?? {
+        installerId,
+        installerName: installerById.get(installerId) ?? "ללא שם מתקין",
+        details: [],
+        totalAmount: 0,
+      };
+      const detail = mapMonthlyPaymentDetail(approval, installerId, taskById);
+
+      current.details.push(detail);
+      current.totalAmount += detail.amount;
+      byInstaller.set(installerId, current);
+    });
+  });
+
+  return Array.from(byInstaller.values())
+    .map((item) => ({
+      installerId: item.installerId,
+      installerName: item.installerName,
+      approvalCount: item.details.length,
+      totalAmount: item.totalAmount,
+      details: item.details.sort((a, b) => {
+        if (a.installationDate && b.installationDate) {
+          return a.installationDate.localeCompare(b.installationDate);
+        }
+
+        if (!a.installationDate && b.installationDate) {
+          return 1;
+        }
+
+        if (a.installationDate && !b.installationDate) {
+          return -1;
+        }
+
+        return (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "", "he");
+      }),
+    }))
+    .sort((a, b) => {
+      if (b.totalAmount !== a.totalAmount) {
+        return b.totalAmount - a.totalAmount;
+      }
+
+      return a.installerName.localeCompare(b.installerName, "he");
+    });
 }
 
 function mapInstaller(
@@ -543,6 +663,56 @@ export async function getInstallerRatesControlData() {
   return {
     rates,
     tasksWithoutRate,
+  };
+}
+
+export async function getInstallerMonthlyPaymentReport(
+  paymentMonth?: string | null,
+): Promise<InstallerMonthlyPaymentReport> {
+  const selectedMonth = normalizePaymentMonth(paymentMonth);
+  const airtableMonth = airtablePaymentMonth(selectedMonth);
+  const [approvalRecords, installerRecords, taskRecords] = await Promise.all([
+    selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerTaskFields>(TASKS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+  ]);
+
+  const installerById = new Map(
+    installerRecords.map((record) => [
+      record.id,
+      textValue(record.fields.fldOSaSnJIAr43Btv) || textValue(record.fields["שם מתקין"]),
+    ]),
+  );
+  const taskById = buildTaskById(taskRecords);
+  const validMonthlyApprovals = approvalRecords.filter(
+    (approval) =>
+      isValidPaymentApproval(approval.fields) &&
+      textValue(approval.fields.fld2wVyMe3wyhYsqK) === airtableMonth,
+  );
+  const installerSummaries = buildMonthlyReportByInstaller(
+    validMonthlyApprovals,
+    installerById,
+    taskById,
+  );
+
+  return {
+    selectedMonth,
+    airtableMonth,
+    installerSummaries,
+    totalApprovalCount: validMonthlyApprovals.length,
+    totalAmount: installerSummaries.reduce(
+      (total, installer) => total + installer.totalAmount,
+      0,
+    ),
   };
 }
 

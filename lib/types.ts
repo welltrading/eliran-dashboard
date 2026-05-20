@@ -90,6 +90,34 @@ export type TaskWithoutRate = {
   installerName: string | null;
 };
 
+export type InstallerMonthlyPaymentDetail = {
+  id: string;
+  approvalId: string;
+  installationDate: string | null;
+  orderNumber: string | null;
+  customerName: string | null;
+  taskType: string | null;
+  amount: number;
+  amountMissing: boolean;
+  approvalStatus: string;
+};
+
+export type InstallerMonthlyPaymentSummary = {
+  installerId: string;
+  installerName: string;
+  approvalCount: number;
+  totalAmount: number;
+  details: InstallerMonthlyPaymentDetail[];
+};
+
+export type InstallerMonthlyPaymentReport = {
+  selectedMonth: string;
+  airtableMonth: string;
+  installerSummaries: InstallerMonthlyPaymentSummary[];
+  totalApprovalCount: number;
+  totalAmount: number;
+};
+
 export type Order = {
   id: string;
   orderNumber: string;

@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import {
   getInstallerRatesControlData,
+  getInstallerMonthlyPaymentReport,
   getInstallers,
   getPendingPaymentApprovalTasks,
 } from "@/lib/airtable/services/installers";
@@ -9,6 +10,7 @@ import {
   InstallerRatesTable,
   TasksWithoutRateTable,
 } from "./InstallerRatesControl";
+import { InstallerMonthlyPaymentsReportClient } from "./InstallerMonthlyPaymentsReportClient";
 import { InstallersTableClient } from "./InstallersTableClient";
 import { PendingPaymentApprovalsClient } from "./PendingPaymentApprovalsClient";
 
@@ -16,6 +18,12 @@ export const dynamic = "force-dynamic";
 
 const AIRTABLE_INSTALLERS_TABLE_URL =
   "https://airtable.com/app77CdzKEqLlhZ8d/tblNj2W8WJWbeG1sl";
+
+type InstallersPageProps = {
+  searchParams?: Promise<{
+    paymentMonth?: string | string[];
+  }>;
+};
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("he-IL", {
@@ -25,15 +33,21 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-export default async function InstallersPage() {
+export default async function InstallersPage({ searchParams }: InstallersPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const requestedPaymentMonth = Array.isArray(resolvedSearchParams?.paymentMonth)
+    ? resolvedSearchParams?.paymentMonth[0]
+    : resolvedSearchParams?.paymentMonth;
   const [
     { installers, summary },
     pendingPaymentApprovalTasks,
     { rates, tasksWithoutRate },
+    monthlyPaymentReport,
   ] = await Promise.all([
     getInstallers(),
     getPendingPaymentApprovalTasks(),
     getInstallerRatesControlData(),
+    getInstallerMonthlyPaymentReport(requestedPaymentMonth),
   ]);
 
   return (
@@ -111,6 +125,10 @@ export default async function InstallersPage() {
 
       <Card>
         <InstallerRatesTable rates={rates} />
+      </Card>
+
+      <Card>
+        <InstallerMonthlyPaymentsReportClient report={monthlyPaymentReport} />
       </Card>
 
       <Card>
