@@ -3,7 +3,7 @@ import type { Task, TaskScheduleSummary, TaskStatus } from "@/lib/types";
 import { selectRecords } from "../client";
 import type { RawInstallerFields, RawOrderFields, RawTaskFields } from "../raw-types";
 import { airtableTables } from "../tables";
-import { updateRecord } from "../write-client";
+import { createRecord, updateRecord } from "../write-client";
 
 const TASKS_TABLE_ID = "tblsodUowDPPiOcCk";
 const ORDERS_TABLE_ID = "tblJYbxBXWUkAoI7m";
@@ -40,6 +40,16 @@ export type UpdateTaskAssignmentInput = {
   installerId: string | null;
 };
 
+export type CreateStandaloneTaskInput = {
+  customerName: string;
+  phone: string | null;
+  address: string | null;
+  executionDate: string | null;
+  timeWindow: string | null;
+  status: TaskStatus;
+  notes: string | null;
+};
+
 const taskStatuses: TaskStatus[] = [
   "פתוח",
   "בטיפול",
@@ -55,6 +65,16 @@ type UpdatedTaskFields = {
   fld7wFWvaROfYEQ8B?: string | null;
   fldGurfCRnIZNu8Dl?: string | null;
   fldtSaIGqknI4t1IM?: string[];
+};
+
+type CreatedStandaloneTaskFields = {
+  fldGgCBOWaXKWzTv8: string;
+  fldR8epP63UCm2dvH?: string;
+  fldIWMyTY6eUcphOx?: string;
+  fld7wFWvaROfYEQ8B?: string;
+  fldGurfCRnIZNu8Dl?: string;
+  fldAP5bP6n8okIqec: TaskStatus;
+  fldIcfmWGysvQYv8c?: string;
 };
 
 const assignmentTimeWindows = ["10-13", "13-16", "16-19"];
@@ -328,6 +348,90 @@ function normalizeOptionalText(value: string | null | undefined) {
 
 function isValidDateInput(value: string | null) {
   return value === null || /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+export async function createStandaloneTask(input: CreateStandaloneTaskInput) {
+  const customerName = input.customerName.trim();
+  const phone = normalizeOptionalText(input.phone);
+  const address = normalizeOptionalText(input.address);
+  const executionDate = normalizeOptionalText(input.executionDate);
+  const timeWindow = normalizeOptionalText(input.timeWindow);
+  const notes = normalizeOptionalText(input.notes);
+  const normalizedStatus = textValue(input.status);
+  const status = normalizedStatus as TaskStatus;
+  const errors: string[] = [];
+
+  if (!customerName) {
+    errors.push("שם לקוח הוא שדה חובה.");
+  }
+
+  if (!isValidDateInput(executionDate)) {
+    errors.push("תאריך הביצוע אינו תקין.");
+  }
+
+  if (timeWindow && !assignmentTimeWindows.includes(timeWindow)) {
+    errors.push("חלון הזמן אינו תקין.");
+  }
+
+  if (!taskStatuses.includes(status)) {
+    errors.push("סטטוס המשימה אינו תקין.");
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false as const,
+      message: "יש לתקן את השדות לפני יצירת המשימה.",
+      errors,
+    };
+  }
+
+  const fields: CreatedStandaloneTaskFields = {
+    fldGgCBOWaXKWzTv8: customerName,
+    fldAP5bP6n8okIqec: status,
+  };
+
+  if (phone) {
+    fields.fldR8epP63UCm2dvH = phone;
+  }
+
+  if (address) {
+    fields.fldIWMyTY6eUcphOx = address;
+  }
+
+  if (executionDate) {
+    fields.fld7wFWvaROfYEQ8B = executionDate;
+  }
+
+  if (timeWindow) {
+    fields.fldGurfCRnIZNu8Dl = timeWindow;
+  }
+
+  if (notes) {
+    fields.fldIcfmWGysvQYv8c = notes;
+  }
+
+  try {
+    const record = await createRecord<CreatedStandaloneTaskFields>(
+      airtableTables.tasks,
+      fields,
+    );
+
+    return {
+      ok: true as const,
+      message: "המשימה הכללית נוצרה בהצלחה.",
+      recordId: record.id,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: "יצירת המשימה ב-Airtable נכשלה.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת יצירת המשימה.",
+      ],
+    };
+  }
 }
 
 export async function updateTaskAssignment(input: UpdateTaskAssignmentInput) {

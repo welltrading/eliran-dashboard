@@ -372,6 +372,54 @@ textarea {
   grid-template-columns: minmax(240px, 1.2fr) 140px 180px 150px 150px auto;
 }
 
+.standalone-task-creator {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.standalone-task-creator__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.standalone-task-creator__header h2,
+.standalone-task-creator__header p {
+  margin: 0;
+}
+
+.standalone-task-creator__header p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.standalone-task-creator__form {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 14px;
+}
+
+.standalone-task-creator__fields {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+.standalone-task-creator__notes {
+  grid-column: 1 / -1;
+}
+
+.standalone-task-creator__notes textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
 .daily-schedule {
   display: grid;
   gap: 14px;

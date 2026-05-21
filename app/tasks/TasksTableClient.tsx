@@ -3,7 +3,11 @@
 import { useRouter } from "next/navigation";
 import { Fragment, useMemo, useState, useTransition } from "react";
 import type { Task, TaskStatus } from "@/lib/types";
-import { markTaskDoneAction, updateTaskAssignmentAction } from "./actions";
+import {
+  createStandaloneTaskAction,
+  markTaskDoneAction,
+  updateTaskAssignmentAction,
+} from "./actions";
 
 type DateFilter = "הכל" | "היום" | "מחר" | "השבוע" | "ללא תאריך";
 type ScheduleSentFilter = "הכל" | "נשלח" | "לא נשלח" | "שגיאה";
@@ -33,6 +37,14 @@ const timeWindowOrder = new Map([
 
 const scheduleViews: ScheduleView[] = ["היום", "מחר", "השבוע", "ללא תאריך"];
 const assignmentTimeWindows = ["10-13", "13-16", "16-19"] as const;
+const taskStatusOptions: TaskStatus[] = [
+  "פתוח",
+  "בטיפול",
+  "הושלם",
+  "לביצוע",
+  "בוצע",
+  "בוטל",
+];
 const weekDays = [
   { label: "ראשון", offset: 0 },
   { label: "שני", offset: 1 },
@@ -329,6 +341,7 @@ export function TasksTableClient({
   const router = useRouter();
   const [isMarkingDone, startMarkingDoneTransition] = useTransition();
   const [isSavingAssignment, startAssignmentTransition] = useTransition();
+  const [isCreatingStandaloneTask, startStandaloneTaskTransition] = useTransition();
   const [scheduleView, setScheduleView] = useState<ScheduleView>("היום");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("הכל");
@@ -340,6 +353,7 @@ export function TasksTableClient({
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [assignmentSavingTaskId, setAssignmentSavingTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [isStandaloneTaskFormOpen, setIsStandaloneTaskFormOpen] = useState(false);
   const [taskUpdateError, setTaskUpdateError] = useState<string | null>(null);
 
   const statuses = useMemo(() => {
@@ -509,6 +523,44 @@ export function TasksTableClient({
     }
 
     setEditingTaskId(null);
+  }
+
+  function closeStandaloneTaskForm() {
+    if (isCreatingStandaloneTask) {
+      return;
+    }
+
+    setIsStandaloneTaskFormOpen(false);
+  }
+
+  function handleCreateStandaloneTask(formData: FormData) {
+    if (isCreatingStandaloneTask) {
+      return;
+    }
+
+    setTaskUpdateError(null);
+
+    startStandaloneTaskTransition(async () => {
+      const result = await createStandaloneTaskAction({
+        customerName: String(formData.get("customerName") ?? ""),
+        phone: String(formData.get("phone") ?? "") || null,
+        address: String(formData.get("address") ?? "") || null,
+        executionDate: String(formData.get("executionDate") ?? "") || null,
+        timeWindow: String(formData.get("timeWindow") ?? "") || null,
+        status: String(formData.get("status") ?? "לביצוע") as TaskStatus,
+        notes: String(formData.get("notes") ?? "") || null,
+      });
+
+      if (result.ok) {
+        setIsStandaloneTaskFormOpen(false);
+        router.refresh();
+        return;
+      }
+
+      setTaskUpdateError(
+        [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+      );
+    });
   }
 
   function handleSaveAssignment(task: Task, formData: FormData) {
@@ -783,6 +835,138 @@ export function TasksTableClient({
 
   return (
     <>
+      <section className="standalone-task-creator" aria-label="יצירת משימה כללית">
+        <div className="standalone-task-creator__header">
+          <div>
+            <h2>משימה כללית</h2>
+            <p>יצירת משימה ללא הזמנה מקושרת.</p>
+          </div>
+          <button
+            className="primary-action"
+            type="button"
+            onClick={() => {
+              setTaskUpdateError(null);
+              setIsStandaloneTaskFormOpen((current) => !current);
+            }}
+            disabled={isCreatingStandaloneTask}
+          >
+            יצירת משימה כללית
+          </button>
+        </div>
+
+        {isStandaloneTaskFormOpen ? (
+          <form
+            className="standalone-task-creator__form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleCreateStandaloneTask(new FormData(event.currentTarget));
+            }}
+          >
+            <div className="task-assignment-editor__fields standalone-task-creator__fields">
+              <label className="filter-field">
+                <span className="filter-label">שם לקוח ללא הזמנה</span>
+                <input
+                  className="filter-input"
+                  name="customerName"
+                  required
+                  disabled={isCreatingStandaloneTask}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">טלפון לקוח ללא הזמנה</span>
+                <input
+                  className="filter-input"
+                  name="phone"
+                  type="tel"
+                  disabled={isCreatingStandaloneTask}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">כתובת לקוח ללא הזמנה</span>
+                <input
+                  className="filter-input"
+                  name="address"
+                  disabled={isCreatingStandaloneTask}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">תאריך ביצוע</span>
+                <input
+                  className="filter-input"
+                  type="date"
+                  name="executionDate"
+                  disabled={isCreatingStandaloneTask}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">חלון זמן</span>
+                <select
+                  className="filter-select"
+                  name="timeWindow"
+                  defaultValue=""
+                  disabled={isCreatingStandaloneTask}
+                >
+                  <option value="">ללא חלון זמן</option>
+                  {assignmentTimeWindows.map((timeWindow) => (
+                    <option value={timeWindow} key={timeWindow}>
+                      {timeWindow}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">סטטוס</span>
+                <select
+                  className="filter-select"
+                  name="status"
+                  defaultValue="לביצוע"
+                  disabled={isCreatingStandaloneTask}
+                >
+                  {taskStatusOptions.map((taskStatusOption) => (
+                    <option value={taskStatusOption} key={taskStatusOption}>
+                      {taskStatusOption}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filter-field standalone-task-creator__notes">
+                <span className="filter-label">הערות</span>
+                <textarea
+                  className="filter-input"
+                  name="notes"
+                  rows={3}
+                  disabled={isCreatingStandaloneTask}
+                />
+              </label>
+            </div>
+
+            <div className="task-assignment-editor__actions">
+              <button
+                className="primary-action"
+                type="submit"
+                disabled={isCreatingStandaloneTask}
+              >
+                {isCreatingStandaloneTask ? "יוצר משימה..." : "צור משימה"}
+              </button>
+              <button
+                className="task-row-actions__secondary"
+                type="button"
+                disabled={isCreatingStandaloneTask}
+                onClick={closeStandaloneTaskForm}
+              >
+                ביטול
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
       <section className="daily-schedule" aria-label="לו״ז יומי">
         <div className="daily-schedule__header">
           <div>
