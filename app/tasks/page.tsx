@@ -4,6 +4,7 @@ import {
   getTaskInstallerOptions,
   getTasks,
   getTaskScheduleSummary,
+  getTaskTypeOptions,
 } from "@/lib/airtable/services/tasks";
 import { TasksTableClient } from "./TasksTableClient";
 
@@ -13,9 +14,10 @@ const AIRTABLE_TASKS_TABLE_URL =
   "https://airtable.com/app77CdzKEqLlhZ8d/tblsodUowDPPiOcCk";
 
 export default async function TasksPage() {
-  const [tasks, installerOptions] = await Promise.all([
+  const [tasks, installerOptions, taskTypeOptions] = await Promise.all([
     getTasks(),
     getTaskInstallerOptions(),
+    getTaskTypeOptions(),
   ]);
   const summary = getTaskScheduleSummary(tasks);
 
@@ -108,6 +110,7 @@ export default async function TasksPage() {
         <TasksTableClient
           tasks={tasks}
           installerOptions={installerOptions}
+          taskTypeOptions={taskTypeOptions}
           airtableTasksTableUrl={AIRTABLE_TASKS_TABLE_URL}
         />
       </Card>

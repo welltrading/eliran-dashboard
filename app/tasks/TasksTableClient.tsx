@@ -22,10 +22,15 @@ type TaskInstallerOption = {
   id: string;
   name: string;
 };
+type TaskTypeOption = {
+  id: string;
+  name: string;
+};
 
 type TasksTableClientProps = {
   tasks: Task[];
   installerOptions: TaskInstallerOption[];
+  taskTypeOptions: TaskTypeOption[];
   airtableTasksTableUrl: string;
 };
 
@@ -336,6 +341,7 @@ function weeklyCompactTaskClass(task: Task) {
 export function TasksTableClient({
   tasks,
   installerOptions,
+  taskTypeOptions,
   airtableTasksTableUrl,
 }: TasksTableClientProps) {
   const router = useRouter();
@@ -549,6 +555,8 @@ export function TasksTableClient({
         timeWindow: String(formData.get("timeWindow") ?? "") || null,
         status: String(formData.get("status") ?? "לביצוע") as TaskStatus,
         notes: String(formData.get("notes") ?? "") || null,
+        taskTypeId: String(formData.get("taskTypeId") ?? "") || null,
+        installerId: String(formData.get("installerId") ?? "") || null,
       });
 
       if (result.ok) {
@@ -930,6 +938,40 @@ export function TasksTableClient({
                   {taskStatusOptions.map((taskStatusOption) => (
                     <option value={taskStatusOption} key={taskStatusOption}>
                       {taskStatusOption}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">סוג משימה</span>
+                <select
+                  className="filter-select"
+                  name="taskTypeId"
+                  defaultValue=""
+                  disabled={isCreatingStandaloneTask}
+                >
+                  <option value="">ללא סוג משימה</option>
+                  {taskTypeOptions.map((taskTypeOption) => (
+                    <option value={taskTypeOption.id} key={taskTypeOption.id}>
+                      {taskTypeOption.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">מתקין</span>
+                <select
+                  className="filter-select"
+                  name="installerId"
+                  defaultValue=""
+                  disabled={isCreatingStandaloneTask}
+                >
+                  <option value="">ללא מתקין</option>
+                  {installerOptions.map((installerOption) => (
+                    <option value={installerOption.id} key={installerOption.id}>
+                      {installerOption.name}
                     </option>
                   ))}
                 </select>

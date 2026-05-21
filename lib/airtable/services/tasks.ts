@@ -1,13 +1,19 @@
 import "server-only";
 import type { Task, TaskScheduleSummary, TaskStatus } from "@/lib/types";
 import { selectRecords } from "../client";
-import type { RawInstallerFields, RawOrderFields, RawTaskFields } from "../raw-types";
+import type {
+  RawInstallerFields,
+  RawInstallerRateFields,
+  RawOrderFields,
+  RawTaskFields,
+} from "../raw-types";
 import { airtableTables } from "../tables";
 import { createRecord, updateRecord } from "../write-client";
 
 const TASKS_TABLE_ID = "tblsodUowDPPiOcCk";
 const ORDERS_TABLE_ID = "tblJYbxBXWUkAoI7m";
 const INSTALLERS_TABLE_ID = "tblNj2W8WJWbeG1sl";
+const RATES_TABLE_ID = "tbl4guJMDoluPnHLD";
 const ISRAEL_TIME_ZONE = "Asia/Jerusalem";
 
 type AirtableRecord<TFields> = {
@@ -33,6 +39,11 @@ type TaskInstallerOption = {
   name: string;
 };
 
+type TaskTypeOption = {
+  id: string;
+  name: string;
+};
+
 export type UpdateTaskAssignmentInput = {
   taskId: string;
   executionDate: string | null;
@@ -48,6 +59,8 @@ export type CreateStandaloneTaskInput = {
   timeWindow: string | null;
   status: TaskStatus;
   notes: string | null;
+  taskTypeId?: string | null;
+  installerId?: string | null;
 };
 
 const taskStatuses: TaskStatus[] = [
@@ -75,6 +88,8 @@ type CreatedStandaloneTaskFields = {
   fldGurfCRnIZNu8Dl?: string;
   fldAP5bP6n8okIqec: TaskStatus;
   fldIcfmWGysvQYv8c?: string;
+  fld8xgcv4HEeW2NYF?: string[];
+  fldtSaIGqknI4t1IM?: string[];
 };
 
 const assignmentTimeWindows = ["10-13", "13-16", "16-19"];
@@ -187,6 +202,25 @@ function mapInstallerOption(record: AirtableRecord<RawInstallerFields>): TaskIns
   return {
     id: record.id,
     name: installer.name,
+  };
+}
+
+function mapTaskTypeOption(record: AirtableRecord<RawInstallerRateFields>): TaskTypeOption | null {
+  const fields = record.fields;
+
+  if (!booleanValue(fields.fldm3OVYRryVl6bvx)) {
+    return null;
+  }
+
+  const name = nullableTextValue(fields.fldpoNfga22gQZsau);
+
+  if (!name) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    name,
   };
 }
 
@@ -307,6 +341,18 @@ export async function getTaskInstallerOptions() {
     .sort((a, b) => a.name.localeCompare(b.name, "he"));
 }
 
+export async function getTaskTypeOptions() {
+  const records = await selectRecords<RawInstallerRateFields>(RATES_TABLE_ID, {
+    cache: "no-store",
+    returnFieldsByFieldId: true,
+  });
+
+  return records
+    .map(mapTaskTypeOption)
+    .filter((taskType): taskType is TaskTypeOption => Boolean(taskType))
+    .sort((a, b) => a.name.localeCompare(b.name, "he"));
+}
+
 export async function markTaskDone(taskId: string) {
   const normalizedTaskId = taskId.trim();
 
@@ -357,6 +403,8 @@ export async function createStandaloneTask(input: CreateStandaloneTaskInput) {
   const executionDate = normalizeOptionalText(input.executionDate);
   const timeWindow = normalizeOptionalText(input.timeWindow);
   const notes = normalizeOptionalText(input.notes);
+  const taskTypeId = normalizeOptionalText(input.taskTypeId);
+  const installerId = normalizeOptionalText(input.installerId);
   const normalizedStatus = textValue(input.status);
   const status = normalizedStatus as TaskStatus;
   const errors: string[] = [];
@@ -375,6 +423,47 @@ export async function createStandaloneTask(input: CreateStandaloneTaskInput) {
 
   if (!taskStatuses.includes(status)) {
     errors.push("סטטוס המשימה אינו תקין.");
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false as const,
+      message: "יש לתקן את השדות לפני יצירת המשימה.",
+      errors,
+    };
+  }
+
+  if (taskTypeId || installerId) {
+    try {
+      const [taskTypeOptions, installerOptions] = await Promise.all([
+        taskTypeId ? getTaskTypeOptions() : Promise.resolve([]),
+        installerId ? getTaskInstallerOptions() : Promise.resolve([]),
+      ]);
+
+      if (
+        taskTypeId &&
+        !taskTypeOptions.some((taskTypeOption) => taskTypeOption.id === taskTypeId)
+      ) {
+        errors.push("סוג המשימה שנבחר אינו פעיל או אינו קיים.");
+      }
+
+      if (
+        installerId &&
+        !installerOptions.some((installerOption) => installerOption.id === installerId)
+      ) {
+        errors.push("המתקין שנבחר אינו קיים.");
+      }
+    } catch (error) {
+      return {
+        ok: false as const,
+        message: "בדיקת אפשרויות המשימה ב-Airtable נכשלה.",
+        errors: [
+          error instanceof Error
+            ? error.message
+            : "אירעה שגיאה לא צפויה בעת בדיקת האפשרויות.",
+        ],
+      };
+    }
   }
 
   if (errors.length > 0) {
@@ -408,6 +497,14 @@ export async function createStandaloneTask(input: CreateStandaloneTaskInput) {
 
   if (notes) {
     fields.fldIcfmWGysvQYv8c = notes;
+  }
+
+  if (taskTypeId) {
+    fields.fld8xgcv4HEeW2NYF = [taskTypeId];
+  }
+
+  if (installerId) {
+    fields.fldtSaIGqknI4t1IM = [installerId];
   }
 
   try {
