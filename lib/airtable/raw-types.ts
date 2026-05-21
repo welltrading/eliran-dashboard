@@ -36,6 +36,9 @@ export type RawInstallerTaskFields = {
   fldMehHwe8j62Zmd3?: unknown;
   fldgntnzuRgEBSfdj?: unknown;
   fldJktpQOU9RRgy1t?: unknown;
+  fldnW9tNzTBwHeB5k?: unknown;
+  fld6yO2AJBtvihM9W?: unknown;
+  fldzHUUvieCC7sZqz?: unknown;
 };
 
 export type RawExecutionApprovalFields = {
@@ -163,6 +166,9 @@ export type RawTaskFields = {
   fldThdHcsu0pVe6wV?: unknown;
   flduXVUqqxhKDwV7i?: unknown;
   fldVo4YVjCEUBZ2JP?: unknown;
+  fldnW9tNzTBwHeB5k?: unknown;
+  fld6yO2AJBtvihM9W?: unknown;
+  fldzHUUvieCC7sZqz?: unknown;
   כותרת?: string;
   סטטוס?: string;
   "תאריך מתוכנן"?: string;

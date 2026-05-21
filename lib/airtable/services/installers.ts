@@ -179,6 +179,10 @@ function taskTypeLabel(fields: RawInstallerTaskFields) {
   return linkedLabel?.startsWith("rec") ? null : linkedLabel;
 }
 
+function taskCustomerName(fields: RawInstallerTaskFields) {
+  return nullableTextValue(fields.fldnW9tNzTBwHeB5k) ?? firstListText(fields.fldgntnzuRgEBSfdj);
+}
+
 function monthKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -282,7 +286,7 @@ function mapPendingPaymentApprovalTask(
   return {
     id: task.id,
     executionDate: nullableTextValue(fields.fld7wFWvaROfYEQ8B),
-    customerName: firstListText(fields.fldgntnzuRgEBSfdj),
+    customerName: taskCustomerName(fields),
     orderNumber: firstListText(fields.fldJktpQOU9RRgy1t),
     taskType: taskTypeLabel(fields),
     installerId,
@@ -333,7 +337,7 @@ function mapTaskWithoutRate(
   return {
     id: task.id,
     executionDate: nullableTextValue(fields.fld7wFWvaROfYEQ8B),
-    customerName: firstListText(fields.fldgntnzuRgEBSfdj),
+    customerName: taskCustomerName(fields),
     orderNumber: firstListText(fields.fldJktpQOU9RRgy1t),
     taskType: taskTypeLabel(fields),
     installerName: installerNameForTask(task, installerById),
@@ -357,7 +361,7 @@ function mapMonthlyPaymentDetail(
     orderNumber:
       (task ? firstListText(task.fields.fldJktpQOU9RRgy1t) : null) ??
       firstListText(fields.flds6B6t8maAaevga),
-    customerName: task ? firstListText(task.fields.fldgntnzuRgEBSfdj) : null,
+    customerName: task ? taskCustomerName(task.fields) : null,
     taskType:
       firstListText(fields.fldmOfBYtD9CjxDx6) ??
       (task ? taskTypeLabel(task.fields) : null),

@@ -32,9 +32,9 @@ export function mapTask(record: RawRecord): Task {
     installerPhone: null,
     orderIds: linkedRecordIds(record.fields.fldJQBgJQDdtQFvML ?? record.fields.הזמנה),
     orderNumber: null,
-    customerName: null,
-    phone: null,
-    address: null,
+    customerName: nullableText(record.fields.fldnW9tNzTBwHeB5k),
+    phone: nullableText(record.fields.fld6yO2AJBtvihM9W),
+    address: nullableText(record.fields.fldzHUUvieCC7sZqz),
     orderStatus: null,
   };
 }

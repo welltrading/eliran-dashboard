@@ -209,9 +209,15 @@ function mapTask(
     installerPhone: joinLabels(relatedInstallers.map((installer) => installer?.phone ?? null)),
     orderIds,
     orderNumber: joinLabels(relatedOrders.map((order) => order?.orderNumber ?? null)),
-    customerName: joinLabels(relatedOrders.map((order) => order?.customerName ?? null)),
-    phone: joinLabels(relatedOrders.map((order) => order?.phone ?? null)),
-    address: joinLabels(relatedOrders.map((order) => order?.address ?? null)),
+    customerName:
+      nullableTextValue(fields.fldnW9tNzTBwHeB5k) ??
+      joinLabels(relatedOrders.map((order) => order?.customerName ?? null)),
+    phone:
+      nullableTextValue(fields.fld6yO2AJBtvihM9W) ??
+      joinLabels(relatedOrders.map((order) => order?.phone ?? null)),
+    address:
+      nullableTextValue(fields.fldzHUUvieCC7sZqz) ??
+      joinLabels(relatedOrders.map((order) => order?.address ?? null)),
     orderStatus: joinLabels(relatedOrders.map((order) => order?.orderStatus ?? null)),
   };
 }
