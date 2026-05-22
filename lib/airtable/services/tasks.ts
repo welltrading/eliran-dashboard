@@ -34,12 +34,12 @@ type RelatedInstaller = {
   phone: string | null;
 };
 
-type TaskInstallerOption = {
+export type TaskInstallerOption = {
   id: string;
   name: string;
 };
 
-type TaskTypeOption = {
+export type TaskTypeOption = {
   id: string;
   name: string;
 };
@@ -55,6 +55,16 @@ export type CreateStandaloneTaskInput = {
   customerName: string;
   phone: string | null;
   address: string | null;
+  executionDate: string | null;
+  timeWindow: string | null;
+  status: TaskStatus;
+  notes: string | null;
+  taskTypeId?: string | null;
+  installerId?: string | null;
+};
+
+export type CreateOrderTaskInput = {
+  orderId: string;
   executionDate: string | null;
   timeWindow: string | null;
   status: TaskStatus;
@@ -87,6 +97,16 @@ type CreatedStandaloneTaskFields = {
   fld7wFWvaROfYEQ8B?: string;
   fldGurfCRnIZNu8Dl?: string;
   fldAP5bP6n8okIqec: TaskStatus;
+  fldIcfmWGysvQYv8c?: string;
+  fld8xgcv4HEeW2NYF?: string[];
+  fldtSaIGqknI4t1IM?: string[];
+};
+
+type CreatedOrderTaskFields = {
+  fldJQBgJQDdtQFvML: string[];
+  fldAP5bP6n8okIqec: TaskStatus;
+  fld7wFWvaROfYEQ8B?: string;
+  fldGurfCRnIZNu8Dl?: string;
   fldIcfmWGysvQYv8c?: string;
   fld8xgcv4HEeW2NYF?: string[];
   fldtSaIGqknI4t1IM?: string[];
@@ -516,6 +536,137 @@ export async function createStandaloneTask(input: CreateStandaloneTaskInput) {
     return {
       ok: true as const,
       message: "המשימה הכללית נוצרה בהצלחה.",
+      recordId: record.id,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: "יצירת המשימה ב-Airtable נכשלה.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת יצירת המשימה.",
+      ],
+    };
+  }
+}
+
+export async function createOrderTask(input: CreateOrderTaskInput) {
+  const orderId = input.orderId.trim();
+  const executionDate = normalizeOptionalText(input.executionDate);
+  const timeWindow = normalizeOptionalText(input.timeWindow);
+  const notes = normalizeOptionalText(input.notes);
+  const taskTypeId = normalizeOptionalText(input.taskTypeId);
+  const installerId = normalizeOptionalText(input.installerId);
+  const normalizedStatus = textValue(input.status);
+  const status = normalizedStatus as TaskStatus;
+  const errors: string[] = [];
+
+  if (!orderId) {
+    errors.push("חסרה הזמנה ליצירת המשימה.");
+  }
+
+  if (!isValidDateInput(executionDate)) {
+    errors.push("תאריך הביצוע אינו תקין.");
+  }
+
+  if (timeWindow && !assignmentTimeWindows.includes(timeWindow)) {
+    errors.push("חלון הזמן אינו תקין.");
+  }
+
+  if (!taskStatuses.includes(status)) {
+    errors.push("סטטוס המשימה אינו תקין.");
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false as const,
+      message: "יש לתקן את השדות לפני יצירת המשימה.",
+      errors,
+    };
+  }
+
+  try {
+    const [orderRecords, taskTypeOptions, installerOptions] = await Promise.all([
+      selectRecords<RawOrderFields>(ORDERS_TABLE_ID, {
+        cache: "no-store",
+        returnFieldsByFieldId: true,
+      }),
+      taskTypeId ? getTaskTypeOptions() : Promise.resolve([]),
+      installerId ? getTaskInstallerOptions() : Promise.resolve([]),
+    ]);
+
+    if (!orderRecords.some((record) => record.id === orderId)) {
+      errors.push("ההזמנה שנבחרה אינה קיימת.");
+    }
+
+    if (
+      taskTypeId &&
+      !taskTypeOptions.some((taskTypeOption) => taskTypeOption.id === taskTypeId)
+    ) {
+      errors.push("סוג המשימה שנבחר אינו פעיל או אינו קיים.");
+    }
+
+    if (
+      installerId &&
+      !installerOptions.some((installerOption) => installerOption.id === installerId)
+    ) {
+      errors.push("המתקין שנבחר אינו קיים.");
+    }
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: "בדיקת אפשרויות המשימה ב-Airtable נכשלה.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת בדיקת האפשרויות.",
+      ],
+    };
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false as const,
+      message: "יש לתקן את השדות לפני יצירת המשימה.",
+      errors,
+    };
+  }
+
+  const fields: CreatedOrderTaskFields = {
+    fldJQBgJQDdtQFvML: [orderId],
+    fldAP5bP6n8okIqec: status,
+  };
+
+  if (executionDate) {
+    fields.fld7wFWvaROfYEQ8B = executionDate;
+  }
+
+  if (timeWindow) {
+    fields.fldGurfCRnIZNu8Dl = timeWindow;
+  }
+
+  if (notes) {
+    fields.fldIcfmWGysvQYv8c = notes;
+  }
+
+  if (taskTypeId) {
+    fields.fld8xgcv4HEeW2NYF = [taskTypeId];
+  }
+
+  if (installerId) {
+    fields.fldtSaIGqknI4t1IM = [installerId];
+  }
+
+  try {
+    const record = await createRecord<CreatedOrderTaskFields>(
+      airtableTables.tasks,
+      fields,
+    );
+
+    return {
+      ok: true as const,
+      message: "המשימה להזמנה נוצרה בהצלחה.",
       recordId: record.id,
     };
   } catch (error) {

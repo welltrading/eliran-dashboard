@@ -1019,6 +1019,16 @@ textarea {
   font-weight: 800;
 }
 
+.task-update-success {
+  margin: 0 0 12px;
+  border: 1px solid rgba(21, 128, 61, 0.26);
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  padding: 12px 14px;
+  font-weight: 800;
+}
+
 .tasks-table__assignment-row td {
   background: var(--surface-muted);
   border-right: 3px solid var(--accent);
