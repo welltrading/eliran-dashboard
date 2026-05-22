@@ -74,10 +74,12 @@ export async function selectRecords<TFields>(
 
     if (options.cache) {
       fetchOptions.cache = options.cache;
-    } else {
+    } else if (options.revalidate !== undefined) {
       fetchOptions.next = {
-        revalidate: options.revalidate ?? 60,
+        revalidate: options.revalidate,
       };
+    } else {
+      fetchOptions.cache = "no-store";
     }
 
     const response = await fetch(url, fetchOptions);

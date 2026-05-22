@@ -2,12 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
-import { syncInstallerMonthlyPaymentAction } from "./actions";
+import {
+  markInstallerMonthlyPaymentPaidAction,
+  syncInstallerMonthlyPaymentAction,
+} from "./actions";
 import type {
   InstallerMonthlyPaymentSummary,
   InstallerMonthlyPaymentRecordState,
   InstallerMonthlyPaymentReport,
-  InstallerMonthlyPaymentSyncResult,
+  InstallerMonthlyPaymentMutationResult,
 } from "@/lib/types";
 
 type InstallerMonthlyPaymentsReportClientProps = {
@@ -78,14 +81,40 @@ function canSyncMonthlyPayment(state: InstallerMonthlyPaymentRecordState) {
   );
 }
 
+function sameStringSet(left: string[], right: string[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const rightSet = new Set(right);
+  return left.every((item) => rightSet.has(item));
+}
+
+function isMonthlyPaymentSynced(installer: InstallerMonthlyPaymentSummary) {
+  const state = installer.monthlyPaymentRecord;
+
+  if (state.kind !== "existing") {
+    return false;
+  }
+
+  return (
+    state.record.amount === installer.totalAmount &&
+    sameStringSet(
+      state.record.includedApprovalIds,
+      installer.details.map((detail) => detail.approvalId),
+    )
+  );
+}
+
 export function InstallerMonthlyPaymentsReportClient({
   report,
 }: InstallerMonthlyPaymentsReportClientProps) {
   const router = useRouter();
   const [openInstallerId, setOpenInstallerId] = useState<string | null>(null);
   const [syncingInstallerId, setSyncingInstallerId] = useState<string | null>(null);
-  const [syncResult, setSyncResult] =
-    useState<InstallerMonthlyPaymentSyncResult | null>(null);
+  const [payingInstallerId, setPayingInstallerId] = useState<string | null>(null);
+  const [mutationResult, setMutationResult] =
+    useState<InstallerMonthlyPaymentMutationResult | null>(null);
 
   function handleMonthChange(value: string) {
     if (!value) {
@@ -96,7 +125,7 @@ export function InstallerMonthlyPaymentsReportClient({
   }
 
   async function handleSyncMonthlyPayment(installer: InstallerMonthlyPaymentSummary) {
-    setSyncResult(null);
+    setMutationResult(null);
     setSyncingInstallerId(installer.installerId);
 
     try {
@@ -105,14 +134,14 @@ export function InstallerMonthlyPaymentsReportClient({
         report.selectedMonth,
       );
 
-      setSyncResult(result);
+      setMutationResult(result);
       setSyncingInstallerId(null);
 
       if (result.ok) {
         router.refresh();
       }
     } catch {
-      setSyncResult({
+      setMutationResult({
         ok: false,
         action: "blocked",
         message: "סנכרון התשלום החודשי נכשל. נסו שוב או בדקו את הרשומה באיירטייבל.",
@@ -121,9 +150,44 @@ export function InstallerMonthlyPaymentsReportClient({
     }
   }
 
+  async function handleMarkMonthlyPaymentPaid(installer: InstallerMonthlyPaymentSummary) {
+    const state = installer.monthlyPaymentRecord;
+
+    if (state.kind !== "existing") {
+      return;
+    }
+
+    setMutationResult(null);
+    setPayingInstallerId(installer.installerId);
+
+    try {
+      const result = await markInstallerMonthlyPaymentPaidAction(
+        state.record.id,
+        installer.installerId,
+        report.selectedMonth,
+      );
+
+      setMutationResult(result);
+      setPayingInstallerId(null);
+
+      if (result.ok) {
+        router.refresh();
+      }
+    } catch {
+      setMutationResult({
+        ok: false,
+        action: "blocked",
+        message: "סימון התשלום כשולם נכשל. נסו שוב או בדקו את הרשומה באיירטייבל.",
+      });
+      setPayingInstallerId(null);
+    }
+  }
+
   function renderMonthlyPaymentAction(installer: InstallerMonthlyPaymentSummary) {
     const state = installer.monthlyPaymentRecord;
     const isSyncing = syncingInstallerId === installer.installerId;
+    const isPaying = payingInstallerId === installer.installerId;
+    const hasPendingMutation = syncingInstallerId !== null || payingInstallerId !== null;
 
     if (state.kind === "duplicate") {
       return (
@@ -134,9 +198,11 @@ export function InstallerMonthlyPaymentsReportClient({
     }
 
     if (state.kind === "existing" && state.record.status === "שולם") {
+      const synced = isMonthlyPaymentSynced(installer);
+
       return (
-        <span className="badge badge--success">
-          שולם — נעול
+        <span className={synced ? "badge badge--success" : "badge badge--warning"}>
+          {synced ? "שולם — נעול" : "שולם — קיים פער מול הדוח"}
         </span>
       );
     }
@@ -153,11 +219,24 @@ export function InstallerMonthlyPaymentsReportClient({
       );
     }
 
+    if (state.kind === "existing" && isMonthlyPaymentSynced(installer)) {
+      return (
+        <button
+          className="task-row-actions__secondary"
+          type="button"
+          disabled={hasPendingMutation}
+          onClick={() => handleMarkMonthlyPaymentPaid(installer)}
+        >
+          {isPaying ? "מסמן כשולם..." : "סמן כשולם"}
+        </button>
+      );
+    }
+
     return (
       <button
         className="task-row-actions__secondary"
         type="button"
-        disabled={!canSyncMonthlyPayment(state) || syncingInstallerId !== null}
+        disabled={!canSyncMonthlyPayment(state) || hasPendingMutation}
         onClick={() => handleSyncMonthlyPayment(installer)}
       >
         {isSyncing
@@ -192,15 +271,15 @@ export function InstallerMonthlyPaymentsReportClient({
         </label>
       </div>
 
-      {syncResult ? (
+      {mutationResult ? (
         <div
           className={
-            syncResult.ok ? "task-update-success" : "task-update-error"
+            mutationResult.ok ? "task-update-success" : "task-update-error"
           }
           role="alert"
-          aria-live={syncResult.ok ? "polite" : "assertive"}
+          aria-live={mutationResult.ok ? "polite" : "assertive"}
         >
-          {syncResult.message}
+          {mutationResult.message}
         </div>
       ) : null}
 

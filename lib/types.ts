@@ -125,6 +125,7 @@ export type InstallerMonthlyPaymentRecordSnapshot = {
   amount: number;
   paymentDate: string | null;
   includedApprovalCount: number;
+  includedApprovalIds: string[];
 };
 
 export type InstallerMonthlyPaymentRecordState =
@@ -157,12 +158,21 @@ export type InstallerMonthlyPaymentReport = {
   totalAmount: number;
 };
 
-export type InstallerMonthlyPaymentSyncResult = {
+export type InstallerMonthlyPaymentMutationResult = {
   ok: boolean;
-  action: "created" | "updated" | "blocked" | "duplicate" | "no_approvals";
+  action:
+    | "created"
+    | "updated"
+    | "paid"
+    | "blocked"
+    | "duplicate"
+    | "not_found"
+    | "no_approvals";
   message: string;
   recordId?: string;
 };
+
+export type InstallerMonthlyPaymentSyncResult = InstallerMonthlyPaymentMutationResult;
 
 export type ApprovalMissingAmountIssue = {
   id: string;
