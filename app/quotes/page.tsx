@@ -1,12 +1,16 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { getProductsForQuoteForm } from "@/lib/airtable/services/products";
 import { getQuotes } from "@/lib/airtable/services/quotes";
 import { QuotesTableClient } from "./QuotesTableClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function QuotesPage() {
-  const quotes = await getQuotes();
+  const [quotes, products] = await Promise.all([
+    getQuotes(),
+    getProductsForQuoteForm(),
+  ]);
 
   return (
     <div className="page">
@@ -16,7 +20,7 @@ export default async function QuotesPage() {
       />
 
       <Card>
-        <QuotesTableClient quotes={quotes} />
+        <QuotesTableClient quotes={quotes} products={products} />
       </Card>
     </div>
   );

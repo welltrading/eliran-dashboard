@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { PhoneText } from "@/components/ui/PhoneText";
-import type { Quote, QuoteType } from "@/lib/types";
+import type { Product, Quote, QuoteType } from "@/lib/types";
 import { createQuoteAction } from "./actions";
 import { CreateQuoteButton } from "./CreateQuoteButton";
 
@@ -13,6 +13,7 @@ type StatusFilter = "הכל" | "נשלח" | "ממתין" | "ריק";
 
 type QuotesTableClientProps = {
   quotes: Quote[];
+  products: Product[];
 };
 
 function formatDate(value: string | null) {
@@ -51,13 +52,12 @@ function matchesStatus(status: string, filter: StatusFilter) {
   return normalized.includes(filter);
 }
 
-export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
+export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [quoteType, setQuoteType] = useState<QuoteTypeFilter>("הכל");
   const [status, setStatus] = useState<StatusFilter>("הכל");
   const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
-  const [newQuoteType, setNewQuoteType] = useState<QuoteType>("סטנדרטי");
   const [createFeedback, setCreateFeedback] = useState<{
     kind: "success" | "error";
     message: string;
@@ -98,19 +98,17 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
       const result = await createQuoteAction({
         customerName: String(formData.get("customerName") ?? ""),
         phone: String(formData.get("phone") ?? ""),
-        quoteType: String(formData.get("quoteType") ?? "סטנדרטי") as QuoteType,
+        address: String(formData.get("address") ?? ""),
+        productId: String(formData.get("productId") ?? ""),
         totalPrice: Number(formData.get("totalPrice") ?? 0),
-        quantity: rawQuantity ? Number(rawQuantity) : null,
+        quantity: rawQuantity ? Number(rawQuantity) : 0,
         leadSource: String(formData.get("leadSource") ?? "") || null,
         notes: String(formData.get("notes") ?? "") || null,
-        customProductDescription:
-          String(formData.get("customProductDescription") ?? "") || null,
       });
 
       if (result.ok) {
         setCreateFeedback({ kind: "success", message: result.message });
         setIsCreatePanelOpen(false);
-        setNewQuoteType("סטנדרטי");
         router.refresh();
         return;
       }
@@ -128,7 +126,7 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
         <div className="standalone-task-creator__header">
           <div>
             <h2>הצעת מחיר חדשה</h2>
-            <p>יצירת רשומת הצעת מחיר בסיסית באירטייבל.</p>
+            <p>יצירת הצעת מחיר סטנדרטית עם מוצר מקושר.</p>
           </div>
           <button
             className="primary-action"
@@ -187,31 +185,36 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
               </label>
 
               <label className="filter-field">
-                <span className="filter-label">סוג הצעה</span>
-                <select
-                  className="filter-select"
-                  name="quoteType"
-                  value={newQuoteType}
-                  onChange={(event) => setNewQuoteType(event.target.value as QuoteType)}
-                  disabled={isCreatingQuote}
-                >
-                  <option value="סטנדרטי">סטנדרטי</option>
-                  <option value="ייצור אישי">ייצור אישי</option>
-                </select>
-              </label>
-
-              <label className="filter-field">
-                <span className="filter-label">מחיר בשקלים</span>
+                <span className="filter-label">כתובת</span>
                 <input
                   className="filter-input"
-                  name="totalPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  defaultValue="0"
+                  name="address"
                   required
                   disabled={isCreatingQuote}
                 />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">סוג הצעה</span>
+                <span className="badge badge--success">סטנדרטי</span>
+              </label>
+
+              <label className="filter-field standalone-task-creator__notes">
+                <span className="filter-label">מוצר</span>
+                <select
+                  className="filter-select"
+                  name="productId"
+                  defaultValue=""
+                  required
+                  disabled={isCreatingQuote}
+                >
+                  <option value="">בחר מוצר</option>
+                  {products.map((product) => (
+                    <option value={product.id} key={product.id}>
+                      {product.selectLabel}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label className="filter-field">
@@ -228,13 +231,21 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
               </label>
 
               <label className="filter-field">
-                <span className="filter-label">מקור הגעה</span>
-                <select
-                  className="filter-select"
-                  name="leadSource"
-                  defaultValue=""
+                <span className="filter-label">מחיר בשקלים</span>
+                <input
+                  className="filter-input"
+                  name="totalPrice"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
                   disabled={isCreatingQuote}
-                >
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">מקור הגעה</span>
+                <select className="filter-select" name="leadSource" defaultValue="" disabled={isCreatingQuote}>
                   <option value="">ללא מקור</option>
                   <option value="מדרג">מדרג</option>
                   <option value="מקצוענים">מקצוענים</option>
@@ -243,19 +254,6 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
                   <option value="אחר">אחר</option>
                 </select>
               </label>
-
-              {newQuoteType === "ייצור אישי" ? (
-                <label className="filter-field standalone-task-creator__notes">
-                  <span className="filter-label">תיאור מוצר ייצור אישי</span>
-                  <textarea
-                    className="filter-input"
-                    name="customProductDescription"
-                    rows={3}
-                    required
-                    disabled={isCreatingQuote}
-                  />
-                </label>
-              ) : null}
 
               <label className="filter-field standalone-task-creator__notes">
                 <span className="filter-label">הערות</span>

@@ -4,17 +4,16 @@ import { mapQuote } from "../mappers/quotes";
 import type { RawQuoteFields } from "../raw-types";
 import { airtableTables } from "../tables";
 import { createRecord } from "../write-client";
-import type { QuoteType } from "@/lib/types";
 
 export type CreateQuoteInput = {
   customerName: string;
   phone: string;
-  quoteType: QuoteType;
+  address: string;
+  productId: string;
   totalPrice: number;
-  quantity?: number | null;
+  quantity: number;
   leadSource?: string | null;
   notes?: string | null;
-  customProductDescription?: string | null;
 };
 
 export type CreateQuoteResult =
@@ -32,16 +31,17 @@ export type CreateQuoteResult =
 type CreatedQuoteFields = {
   fld07wwSMqvzYk0s4?: string;
   fldPYvrQHENHZC8pJ?: string;
+  fldhF5IRofdRLTkhN?: string;
   fldN4EILKJZND3FOf?: string;
+  fldPt89KYMnfPHc1X?: string[];
   fldHnLVvPoqT0VHvA?: number;
   fldcS4I85kjhbKZbJ?: number;
   fldOY3RLPblIPoz60?: string;
   fldGnHde4OSCi00ue?: string;
-  fldAD8QmPrnCbZhu2?: string;
 };
 
-const quoteTypes: QuoteType[] = ["סטנדרטי", "ייצור אישי"];
 const leadSources = ["מדרג", "מקצוענים", "גוגל", "המלצה", "אחר"];
+const airtableRecordIdPattern = /^rec[A-Za-z0-9]{14}$/;
 
 function normalizeOptionalText(value: string | null | undefined) {
   const normalized = value?.trim() ?? "";
@@ -52,14 +52,10 @@ function validateCreateQuoteInput(input: CreateQuoteInput) {
   const errors: string[] = [];
   const customerName = input.customerName.trim();
   const phone = input.phone.trim();
-  const customProductDescription = normalizeOptionalText(
-    input.customProductDescription,
-  );
+  const address = input.address.trim();
+  const productId = input.productId.trim();
   const leadSource = normalizeOptionalText(input.leadSource);
-  const quantity =
-    input.quantity === null || input.quantity === undefined
-      ? null
-      : Number(input.quantity);
+  const quantity = Number(input.quantity);
   const totalPrice = Number(input.totalPrice);
 
   if (!customerName) {
@@ -70,15 +66,19 @@ function validateCreateQuoteInput(input: CreateQuoteInput) {
     errors.push("טלפון הוא שדה חובה.");
   }
 
-  if (!quoteTypes.includes(input.quoteType)) {
-    errors.push("סוג הצעה לא תקין.");
+  if (!address) {
+    errors.push("כתובת היא שדה חובה.");
   }
 
-  if (!Number.isFinite(totalPrice) || totalPrice < 0) {
-    errors.push("מחיר כולל חייב להיות מספר 0 או יותר.");
+  if (!airtableRecordIdPattern.test(productId)) {
+    errors.push("מוצר הוא שדה חובה.");
   }
 
-  if (quantity !== null && (!Number.isFinite(quantity) || quantity <= 0)) {
+  if (!Number.isFinite(totalPrice) || totalPrice <= 0) {
+    errors.push("מחיר כולל חייב להיות גדול מ-0.");
+  }
+
+  if (!Number.isFinite(quantity) || quantity <= 0) {
     errors.push("כמות חייבת להיות גדולה מ-0.");
   }
 
@@ -86,21 +86,17 @@ function validateCreateQuoteInput(input: CreateQuoteInput) {
     errors.push("מקור הגעה לא תקין.");
   }
 
-  if (input.quoteType === "ייצור אישי" && !customProductDescription) {
-    errors.push("תיאור מוצר ייצור אישי הוא שדה חובה.");
-  }
-
   return {
     errors,
     normalized: {
       customerName,
       phone,
-      quoteType: input.quoteType,
+      address,
+      productId,
       totalPrice,
       quantity,
       leadSource,
       notes: normalizeOptionalText(input.notes),
-      customProductDescription,
     },
   };
 }
@@ -134,13 +130,12 @@ export async function createQuote(input: CreateQuoteInput): Promise<CreateQuoteR
   const fields: CreatedQuoteFields = {
     fld07wwSMqvzYk0s4: normalized.customerName,
     fldPYvrQHENHZC8pJ: normalized.phone,
-    fldN4EILKJZND3FOf: normalized.quoteType,
+    fldhF5IRofdRLTkhN: normalized.address,
+    fldN4EILKJZND3FOf: "סטנדרטי",
+    fldPt89KYMnfPHc1X: [normalized.productId],
     fldHnLVvPoqT0VHvA: normalized.totalPrice,
+    fldcS4I85kjhbKZbJ: normalized.quantity,
   };
-
-  if (normalized.quantity !== null) {
-    fields.fldcS4I85kjhbKZbJ = normalized.quantity;
-  }
 
   if (normalized.leadSource) {
     fields.fldOY3RLPblIPoz60 = normalized.leadSource;
@@ -148,10 +143,6 @@ export async function createQuote(input: CreateQuoteInput): Promise<CreateQuoteR
 
   if (normalized.notes) {
     fields.fldGnHde4OSCi00ue = normalized.notes;
-  }
-
-  if (normalized.quoteType === "ייצור אישי" && normalized.customProductDescription) {
-    fields.fldAD8QmPrnCbZhu2 = normalized.customProductDescription;
   }
 
   try {

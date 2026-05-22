@@ -11,3 +11,9 @@ export async function getProducts() {
 
   return records.map(mapProduct);
 }
+
+export async function getProductsForQuoteForm() {
+  const products = await getProducts();
+
+  return products.sort((a, b) => a.selectLabel.localeCompare(b.selectLabel, "he"));
+}
