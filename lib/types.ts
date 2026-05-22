@@ -71,6 +71,15 @@ export type PendingPaymentApprovalTask = {
   installerName: string;
   paymentAmount: number | null;
   existingApprovalId: string | null;
+  existingApprovalStatus: string | null;
+  existingApprovalCount: number;
+  paymentApprovalState:
+    | "no_approval"
+    | "pending_approval"
+    | "canceled_approval"
+    | "duplicate_approval"
+    | "other_approval";
+  paymentWarning: string | null;
 };
 
 export type InstallerRate = {

@@ -31,6 +31,44 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function approvalStateLabel(task: PendingPaymentApprovalTask) {
+  if (task.paymentApprovalState === "pending_approval") {
+    return "קיים אישור ביצוע ממתין";
+  }
+
+  if (task.paymentApprovalState === "no_approval") {
+    return "טרם נוצר אישור ביצוע";
+  }
+
+  if (task.paymentApprovalState === "duplicate_approval") {
+    return `כפילות אישורי ביצוע (${task.existingApprovalCount})`;
+  }
+
+  if (task.paymentApprovalState === "canceled_approval") {
+    return "קיים אישור ביצוע מבוטל";
+  }
+
+  return task.existingApprovalStatus
+    ? `אישור ביצוע בסטטוס ${task.existingApprovalStatus}`
+    : "אישור ביצוע לא תקף";
+}
+
+function approvalStateBadgeClass(task: PendingPaymentApprovalTask) {
+  if (task.paymentApprovalState === "duplicate_approval") {
+    return "badge badge--danger";
+  }
+
+  if (task.paymentApprovalState === "canceled_approval" || task.paymentWarning) {
+    return "badge badge--warning";
+  }
+
+  if (task.paymentApprovalState === "pending_approval") {
+    return "badge";
+  }
+
+  return "badge badge--muted";
+}
+
 export function PendingPaymentApprovalsClient({
   tasks,
 }: PendingPaymentApprovalsClientProps) {
@@ -40,7 +78,7 @@ export function PendingPaymentApprovalsClient({
   const [approvalError, setApprovalError] = useState<string | null>(null);
 
   function handleApprove(task: PendingPaymentApprovalTask) {
-    if (isPending || !task.paymentAmount) {
+    if (isPending || !task.paymentAmount || task.paymentWarning) {
       return;
     }
 
@@ -67,8 +105,8 @@ export function PendingPaymentApprovalsClient({
     return (
       <div className="card__body placeholder">
         <div>
-          <h2>אין משימות שממתינות לאישור תשלום</h2>
-          <p>כל המשימות שבוצעו ומשויכות למתקין כבר מאושרות או שאין כאלה כרגע.</p>
+          <h2>אין משימות שממתינות לאישור אלירן לתשלום</h2>
+          <p>כל המשימות שבוצעו ומשויכות למתקין כבר מאושרות לתשלום או שאין כאלה כרגע.</p>
         </div>
       </div>
     );
@@ -78,8 +116,11 @@ export function PendingPaymentApprovalsClient({
     <>
       <div className="card__body pending-approvals__header">
         <div>
-          <h2>משימות שממתינות לאישור תשלום</h2>
-          <p>{tasks.length} משימות שבוצעו ועדיין לא אושרו לתשלום.</p>
+          <h2>משימות שממתינות לאישור אלירן לתשלום</h2>
+          <p>
+            {tasks.length} משימות שסומנו כבוצעו, יש להן מתקין, ועדיין אין להן
+            אישור תשלום תקף.
+          </p>
         </div>
       </div>
 
@@ -99,16 +140,21 @@ export function PendingPaymentApprovalsClient({
               <th>סוג משימה</th>
               <th>מתקין</th>
               <th>סכום לתשלום</th>
+              <th>מצב אישור ביצוע</th>
+              <th>סיבת המתנה</th>
               <th>פעולה</th>
             </tr>
           </thead>
           <tbody>
             {tasks.map((task) => {
-              const hasPaymentAmount = Boolean(task.paymentAmount);
+              const canApprove = Boolean(task.paymentAmount) && !task.paymentWarning;
               const isApprovingCurrentTask = approvingTaskId === task.id;
 
               return (
-                <tr key={task.id}>
+                <tr
+                  className={task.paymentWarning ? "data-table__row--warning" : undefined}
+                  key={task.id}
+                >
                   <td>{formatDate(task.executionDate)}</td>
                   <td>{task.customerName ?? "-"}</td>
                   <td>{task.orderNumber ?? "-"}</td>
@@ -122,13 +168,29 @@ export function PendingPaymentApprovalsClient({
                     )}
                   </td>
                   <td>
+                    <span className={approvalStateBadgeClass(task)}>
+                      {approvalStateLabel(task)}
+                    </span>
+                  </td>
+                  <td>
+                    {task.paymentWarning ? (
+                      <span className="badge badge--warning">
+                        {task.paymentWarning}
+                      </span>
+                    ) : (
+                      "בוצע בפועל, יש מתקין, ואין אישור תשלום תקף."
+                    )}
+                  </td>
+                  <td>
                     <button
                       className="primary-action"
                       type="button"
-                      disabled={!hasPaymentAmount || isApprovingCurrentTask}
+                      disabled={!canApprove || isApprovingCurrentTask}
                       onClick={() => handleApprove(task)}
                     >
-                      {isApprovingCurrentTask ? "מאשר..." : "אשר לתשלום"}
+                      {isApprovingCurrentTask
+                        ? "מאשר..."
+                        : "אשר ביצוע ותשלום"}
                     </button>
                   </td>
                 </tr>

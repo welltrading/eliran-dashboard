@@ -261,6 +261,57 @@ function hasValidPaymentApproval(
   return approvals.some((approval) => isValidPaymentApproval(approval.fields));
 }
 
+function pendingPaymentApprovalState(
+  approvals: AirtableRecord<RawExecutionApprovalFields>[],
+): PendingPaymentApprovalTask["paymentApprovalState"] {
+  if (approvals.length === 0) {
+    return "no_approval";
+  }
+
+  if (approvals.length > 1) {
+    return "duplicate_approval";
+  }
+
+  const approval = approvals[0];
+  const status = textValue(approval.fields.fldmg9acRqIp0zim0);
+
+  if (booleanValue(approval.fields.fldxJM4QXKh7kitBM) || status === "מבוטל") {
+    return "canceled_approval";
+  }
+
+  if (status === "ממתין") {
+    return "pending_approval";
+  }
+
+  return "other_approval";
+}
+
+function pendingPaymentWarning(
+  approvals: AirtableRecord<RawExecutionApprovalFields>[],
+  paymentAmount: number | null,
+) {
+  if (!paymentAmount) {
+    return "חסר תעריף או סכום לתשלום. אי אפשר לאשר עד השלמת התעריף.";
+  }
+
+  if (approvals.length > 1) {
+    return "נמצאו כמה אישורי ביצוע לאותה משימה. יש לטפל בכפילות לפני אישור.";
+  }
+
+  if (approvals.length === 1) {
+    const approval = approvals[0];
+
+    if (
+      booleanValue(approval.fields.fldxJM4QXKh7kitBM) ||
+      textValue(approval.fields.fldmg9acRqIp0zim0) === "מבוטל"
+    ) {
+      return "קיים אישור ביצוע מבוטל. יש להסדיר אותו באיירטייבל לפני אישור מחדש.";
+    }
+  }
+
+  return null;
+}
+
 function buildTaskById(tasks: AirtableRecord<RawInstallerTaskFields>[]) {
   return new Map(tasks.map((task) => [task.id, task]));
 }
@@ -278,6 +329,11 @@ function mapPendingPaymentApprovalTask(
   }
 
   const taskApprovals = approvalsByTaskId.get(task.id) ?? [];
+  const paymentAmount = nullableNumberValue(fields.fldSh9sHtkiOTkIwd);
+  const existingApprovalStatus =
+    taskApprovals.length === 1
+      ? nullableTextValue(taskApprovals[0].fields.fldmg9acRqIp0zim0)
+      : null;
 
   if (hasValidPaymentApproval(taskApprovals)) {
     return null;
@@ -291,8 +347,12 @@ function mapPendingPaymentApprovalTask(
     taskType: taskTypeLabel(fields),
     installerId,
     installerName: installerById.get(installerId) ?? "ללא שם מתקין",
-    paymentAmount: nullableNumberValue(fields.fldSh9sHtkiOTkIwd),
+    paymentAmount,
     existingApprovalId: taskApprovals.length === 1 ? taskApprovals[0].id : null,
+    existingApprovalStatus,
+    existingApprovalCount: taskApprovals.length,
+    paymentApprovalState: pendingPaymentApprovalState(taskApprovals),
+    paymentWarning: pendingPaymentWarning(taskApprovals, paymentAmount),
   };
 }
 
@@ -990,6 +1050,21 @@ export async function approveTaskPayment(taskId: string) {
     };
   }
 
+  if (approvalRecords.length === 1) {
+    const existingApproval = approvalRecords[0];
+
+    if (
+      booleanValue(existingApproval.fields.fldxJM4QXKh7kitBM) ||
+      textValue(existingApproval.fields.fldmg9acRqIp0zim0) === "מבוטל"
+    ) {
+      return {
+        ok: false as const,
+        message: "לא ניתן לאשר ביצוע ותשלום על בסיס אישור ביצוע מבוטל.",
+        errors: ["יש להסדיר את אישור הביצוע המבוטל באיירטייבל לפני אישור מחדש."],
+      };
+    }
+  }
+
   const approvalFields: ApprovalPaymentFields = {
     fldpAZh1st8qRqA7n: [normalizedTaskId],
     fld82nUwa5hZGSDlF: approvalDateTimeFromTaskDate(
@@ -1014,12 +1089,12 @@ export async function approveTaskPayment(taskId: string) {
 
     return {
       ok: true as const,
-      message: "התשלום אושר בהצלחה.",
+      message: "הביצוע והתשלום אושרו בהצלחה.",
     };
   } catch (error) {
     return {
       ok: false as const,
-      message: "אישור התשלום ב-Airtable נכשל.",
+      message: "אישור הביצוע והתשלום ב-Airtable נכשל.",
       errors: [
         error instanceof Error
           ? error.message
