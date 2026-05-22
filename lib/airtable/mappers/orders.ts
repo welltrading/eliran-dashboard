@@ -73,5 +73,6 @@ export function mapOrder(record: RawRecord): Order {
       ? record.fields.fldIJzxGrwPaDNACs.filter((item): item is string => typeof item === "string")
       : [],
     sendStatus: textValue(record.fields.fldws1tElgJlhMLR7) || null,
+    productSummary: nullableTextValue(record.fields.fldVRFNFHjfXCzfD6),
   };
 }

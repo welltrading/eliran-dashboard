@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useMemo, useState, useTransition } from "react";
 import type { Task, TaskStatus } from "@/lib/types";
 import {
@@ -89,6 +89,23 @@ function formatScheduleDate(value: string) {
   }).format(date);
 }
 
+function formatWeekRange(startKey: string, endKey: string) {
+  const formatRangePart = (value: string) => {
+    const date = dateFromKey(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat("he-IL", {
+      day: "2-digit",
+      month: "2-digit",
+    }).format(date);
+  };
+
+  return `שבוע ${formatRangePart(startKey)}–${formatRangePart(endKey)}`;
+}
+
 function dateKey(value: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jerusalem",
@@ -111,6 +128,14 @@ function addDays(value: Date, days: number) {
 
 function dateFromKey(value: string) {
   return new Date(`${value}T00:00:00`);
+}
+
+function isValidDateKey(value: string | null): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  return dateKey(dateFromKey(value)) === value;
 }
 
 function startOfWeek(value: Date) {
@@ -345,6 +370,8 @@ export function TasksTableClient({
   airtableTasksTableUrl,
 }: TasksTableClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isMarkingDone, startMarkingDoneTransition] = useTransition();
   const [isSavingAssignment, startAssignmentTransition] = useTransition();
   const [isCreatingStandaloneTask, startStandaloneTaskTransition] = useTransition();
@@ -373,6 +400,40 @@ export function TasksTableClient({
       new Set(tasks.map((task) => task.installerName).filter((value): value is string => Boolean(value))),
     ).sort((a, b) => a.localeCompare(b, "he"));
   }, [tasks]);
+
+  const visibleWeekStart = useMemo(() => {
+    const weekStartParam = searchParams.get("weekStart");
+
+    if (isValidDateKey(weekStartParam)) {
+      return startOfWeek(dateFromKey(weekStartParam));
+    }
+
+    return startOfWeek(new Date());
+  }, [searchParams]);
+
+  const visibleWeekEnd = useMemo(() => {
+    return endOfWeek(dateFromKey(visibleWeekStart));
+  }, [visibleWeekStart]);
+
+  const visibleWeekRange = useMemo(() => {
+    return formatWeekRange(visibleWeekStart, visibleWeekEnd);
+  }, [visibleWeekEnd, visibleWeekStart]);
+
+  const currentWeekStart = startOfWeek(new Date());
+
+  function navigateToWeek(nextWeekStart: string | null) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (nextWeekStart && nextWeekStart !== currentWeekStart) {
+      params.set("weekStart", nextWeekStart);
+    } else {
+      params.delete("weekStart");
+    }
+
+    setSelectedCalendarSlot(null);
+    const queryString = params.toString();
+    router.push(queryString ? `${pathname}?${queryString}` : pathname);
+  }
 
   const scheduleTasks = useMemo(() => {
     return tasks
@@ -406,30 +467,26 @@ export function TasksTableClient({
   }, [scheduleTasks, scheduleView]);
 
   const currentWeekDays = useMemo(() => {
-    const currentWeekStart = startOfWeek(new Date());
-    const startDate = dateFromKey(currentWeekStart);
+    const startDate = dateFromKey(visibleWeekStart);
 
     return weekDays.map((day) => ({
       ...day,
       dateKey: dateKey(addDays(startDate, day.offset)),
     }));
-  }, []);
+  }, [visibleWeekStart]);
 
   const weeklyTasks = useMemo(() => {
-    const currentWeekStart = startOfWeek(new Date());
-    const currentWeekEnd = endOfWeek(new Date());
-
     return tasks
       .filter((task) => {
         const currentTaskDate = taskDateKey(task);
         return (
           Boolean(currentTaskDate) &&
-          currentTaskDate! >= currentWeekStart &&
-          currentTaskDate! <= currentWeekEnd
+          currentTaskDate! >= visibleWeekStart &&
+          currentTaskDate! <= visibleWeekEnd
         );
       })
       .sort(compareTaskSchedule);
-  }, [tasks]);
+  }, [tasks, visibleWeekEnd, visibleWeekStart]);
 
   const firstNonEmptyCalendarSlot = useMemo<CalendarSelection | null>(() => {
     for (const day of currentWeekDays) {
@@ -443,7 +500,13 @@ export function TasksTableClient({
     return null;
   }, [currentWeekDays, weeklyTasks]);
 
-  const activeCalendarSlot = selectedCalendarSlot ?? firstNonEmptyCalendarSlot;
+  const selectedCalendarSlotIsVisible = Boolean(
+    selectedCalendarSlot &&
+      currentWeekDays.some((day) => day.dateKey === selectedCalendarSlot.dayKey),
+  );
+  const activeCalendarSlot = selectedCalendarSlotIsVisible
+    ? selectedCalendarSlot
+    : firstNonEmptyCalendarSlot;
   const activeCalendarDay = activeCalendarSlot
     ? currentWeekDays.find((day) => day.dateKey === activeCalendarSlot.dayKey)
     : null;
@@ -1056,7 +1119,36 @@ export function TasksTableClient({
         <div className="weekly-calendar__header">
           <div>
             <h2>יומן שבועי</h2>
-            <p>{weeklyTasks.length} משימות השבוע</p>
+            <p>
+              {visibleWeekRange} · {weeklyTasks.length} משימות
+            </p>
+          </div>
+          <div className="task-row-actions">
+            <button
+              className="task-row-actions__secondary"
+              type="button"
+              onClick={() =>
+                navigateToWeek(dateKey(addDays(dateFromKey(visibleWeekStart), -7)))
+              }
+            >
+              שבוע קודם
+            </button>
+            <button
+              className="task-row-actions__secondary"
+              type="button"
+              onClick={() => navigateToWeek(null)}
+            >
+              השבוע
+            </button>
+            <button
+              className="task-row-actions__secondary"
+              type="button"
+              onClick={() =>
+                navigateToWeek(dateKey(addDays(dateFromKey(visibleWeekStart), 7)))
+              }
+            >
+              שבוע הבא
+            </button>
           </div>
         </div>
 

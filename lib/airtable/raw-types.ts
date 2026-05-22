@@ -93,6 +93,7 @@ export type RawOrderFields = {
   fldFRK1Kz26jE99xR?: unknown;
   fldIJzxGrwPaDNACs?: unknown;
   fldws1tElgJlhMLR7?: unknown;
+  fldVRFNFHjfXCzfD6?: unknown;
 };
 
 export type RawOrderLineFields = {

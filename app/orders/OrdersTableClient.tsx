@@ -118,7 +118,7 @@ export function OrdersTableClient({
 
     return (
       <tr className="tasks-table__assignment-row">
-        <td colSpan={10}>
+        <td colSpan={11}>
           <form
             className="task-assignment-editor"
             onSubmit={(event) => {
@@ -269,6 +269,7 @@ export function OrdersTableClient({
             <th>שם לקוח</th>
             <th>טלפון</th>
             <th>סוג הזמנה</th>
+            <th>מוצרים / תיאור הזמנה</th>
             <th>סטטוס</th>
             <th>תאריך יצירה</th>
             <th>מחיר כולל</th>
@@ -301,6 +302,13 @@ export function OrdersTableClient({
                 <td>{order.customerName || "-"}</td>
                 <td>{order.phone ?? "-"}</td>
                 <td>{order.orderType}</td>
+                <td>
+                  {order.productSummary ? (
+                    <div style={{ whiteSpace: "pre-line" }}>{order.productSummary}</div>
+                  ) : (
+                    "-"
+                  )}
+                </td>
                 <td>{order.status || "-"}</td>
                 <td>{formatDate(order.createdAt)}</td>
                 <td>{formatCurrency(order.totalPrice)}</td>
