@@ -8,6 +8,7 @@ import type {
   InstallerMonthlyPaymentRecordSnapshot,
   InstallerMonthlyPaymentRecordState,
   InstallerMonthlyPaymentSummary,
+  InstallerMonthlyPaymentSyncResult,
   InstallerRate,
   InstallerSummary,
   PaymentReliabilityControlData,
@@ -58,6 +59,17 @@ type ApprovalPaymentFields = {
   fldOCqFBKS8KuXSSV?: boolean;
   fldmg9acRqIp0zim0?: "אושר";
   fldDLbU0YVyUJN3WV?: string;
+};
+
+type InstallerMonthlyPaymentWriteFields = {
+  fldcM0YGpLHWIg4PZ?: string;
+  fldmSOmxfRd8UrDxg?: string;
+  fld594iX5aq1LoMU5?: string[];
+  fldjSy3ma0Mt0PAPQ?: string;
+  fldXjjBCkocB0DVJ7?: number;
+  fldS6XbWsE6uMtPqp?: "פתוח";
+  fldHso8OGch2Bw937?: string[];
+  fldDwt9bGfyl20oSF?: string;
 };
 
 function textValue(value: unknown) {
@@ -433,6 +445,14 @@ function mapMonthlyPaymentDetail(
 
 function paymentRecordKey(installerId: string, airtableMonth: string) {
   return `${installerId}|${airtableMonth}`;
+}
+
+function isOpenMonthlyPaymentStatus(status: string | null) {
+  return !status || status === "פתוח";
+}
+
+function isLockedMonthlyPaymentStatus(status: string | null) {
+  return status === "שולם" || status === "בוטל / לא לתשלום";
 }
 
 function mapInstallerMonthlyPaymentRecord(
@@ -903,6 +923,153 @@ export async function getInstallerMonthlyPaymentReport(
       (total, installer) => total + installer.totalAmount,
       0,
     ),
+  };
+}
+
+export async function syncInstallerMonthlyPayment(input: {
+  installerId: string;
+  paymentMonth: string;
+}): Promise<InstallerMonthlyPaymentSyncResult> {
+  const installerId = input.installerId.trim();
+  const selectedMonth = input.paymentMonth.trim();
+
+  if (!/^\d{4}-\d{2}$/.test(selectedMonth)) {
+    return {
+      ok: false,
+      action: "blocked",
+      message: "חודש התשלום אינו תקין.",
+    };
+  }
+
+  const airtableMonth = airtablePaymentMonth(selectedMonth);
+  const key = paymentRecordKey(installerId, airtableMonth);
+
+  if (!installerId) {
+    return {
+      ok: false,
+      action: "blocked",
+      message: "חסר מתקין לסנכרון תשלום חודשי.",
+    };
+  }
+
+  const [approvalRecords, installerRecords, monthlyPaymentRecords] = await Promise.all([
+    selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawInstallerMonthlyPaymentFields>(INSTALLER_MONTHLY_PAYMENTS_TABLE_ID, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+  ]);
+
+  const installer = installerRecords.find((record) => record.id === installerId);
+  const installerName = installer
+    ? textValue(installer.fields.fldOSaSnJIAr43Btv) ||
+      textValue(installer.fields["שם מתקין"]) ||
+      "ללא שם מתקין"
+    : "ללא שם מתקין";
+
+  if (!installer) {
+    return {
+      ok: false,
+      action: "blocked",
+      message: "המתקין לא נמצא באיירטייבל.",
+    };
+  }
+
+  const validApprovals = approvalRecords.filter(
+    (approval) =>
+      isValidPaymentApproval(approval.fields) &&
+      textValue(approval.fields.fld2wVyMe3wyhYsqK) === airtableMonth &&
+      linkedRecordIds(approval.fields.fldTjEOiF0qd1FgEd).includes(installerId),
+  );
+
+  if (validApprovals.length === 0) {
+    return {
+      ok: false,
+      action: "no_approvals",
+      message: `לא נמצאו אישורי ביצוע תקפים עבור ${installerName} בחודש ${airtableMonth}.`,
+    };
+  }
+
+  const totalAmount = validApprovals.reduce(
+    (total, approval) => total + numberValue(approval.fields.fldsMGqafeCRlN7zo),
+    0,
+  );
+  const includedApprovalIds = validApprovals.map((approval) => approval.id);
+  const existingRecords = buildMonthlyPaymentRecordsByKey(monthlyPaymentRecords).get(key) ?? [];
+
+  if (existingRecords.length > 1) {
+    return {
+      ok: false,
+      action: "duplicate",
+      message: "קיימת כפילות רשומות תשלום חודשיות למתקין ולחודש הזה. נדרש טיפול ידני לפני סנכרון.",
+    };
+  }
+
+  const fields: InstallerMonthlyPaymentWriteFields = {
+    fldcM0YGpLHWIg4PZ: `${installerName} | ${airtableMonth}`,
+    fldmSOmxfRd8UrDxg: key,
+    fld594iX5aq1LoMU5: [installerId],
+    fldjSy3ma0Mt0PAPQ: airtableMonth,
+    fldXjjBCkocB0DVJ7: totalAmount,
+    fldHso8OGch2Bw937: includedApprovalIds,
+    fldDwt9bGfyl20oSF: "נוצר מדוח סוף חודש",
+  };
+
+  const existingRecord = existingRecords[0];
+
+  if (!existingRecord) {
+    const createdRecord = await createRecord<RawInstallerMonthlyPaymentFields>(
+      INSTALLER_MONTHLY_PAYMENTS_TABLE_ID,
+      {
+        ...fields,
+        fldS6XbWsE6uMtPqp: "פתוח",
+      },
+    );
+
+    return {
+      ok: true,
+      action: "created",
+      message: `נוצר תשלום חודשי פתוח עבור ${installerName} בסך ${totalAmount} ש"ח.`,
+      recordId: createdRecord.id,
+    };
+  }
+
+  if (isLockedMonthlyPaymentStatus(existingRecord.status)) {
+    return {
+      ok: false,
+      action: "blocked",
+      message: `רשומת התשלום החודשית בסטטוס ${existingRecord.status} ולכן לא עודכנה.`,
+      recordId: existingRecord.id,
+    };
+  }
+
+  if (!isOpenMonthlyPaymentStatus(existingRecord.status)) {
+    return {
+      ok: false,
+      action: "blocked",
+      message: `רשומת התשלום החודשית בסטטוס ${existingRecord.status}; ניתן לסנכרן רק רשומה פתוחה.`,
+      recordId: existingRecord.id,
+    };
+  }
+
+  await updateRecord<RawInstallerMonthlyPaymentFields>(
+    INSTALLER_MONTHLY_PAYMENTS_TABLE_ID,
+    existingRecord.id,
+    fields,
+  );
+
+  return {
+    ok: true,
+    action: "updated",
+    message: `רשומת התשלום החודשית סונכרנה עבור ${installerName} בסך ${totalAmount} ש"ח.`,
+    recordId: existingRecord.id,
   };
 }
 

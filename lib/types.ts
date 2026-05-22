@@ -157,6 +157,13 @@ export type InstallerMonthlyPaymentReport = {
   totalAmount: number;
 };
 
+export type InstallerMonthlyPaymentSyncResult = {
+  ok: boolean;
+  action: "created" | "updated" | "blocked" | "duplicate" | "no_approvals";
+  message: string;
+  recordId?: string;
+};
+
 export type ApprovalMissingAmountIssue = {
   id: string;
   approvalId: string;

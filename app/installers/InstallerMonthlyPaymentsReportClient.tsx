@@ -2,9 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
+import { syncInstallerMonthlyPaymentAction } from "./actions";
 import type {
+  InstallerMonthlyPaymentSummary,
   InstallerMonthlyPaymentRecordState,
   InstallerMonthlyPaymentReport,
+  InstallerMonthlyPaymentSyncResult,
 } from "@/lib/types";
 
 type InstallerMonthlyPaymentsReportClientProps = {
@@ -67,11 +70,22 @@ function renderMonthlyPaymentRecordState(state: InstallerMonthlyPaymentRecordSta
   );
 }
 
+function canSyncMonthlyPayment(state: InstallerMonthlyPaymentRecordState) {
+  return (
+    state.kind === "missing" ||
+    (state.kind === "existing" &&
+      (!state.record.status || state.record.status === "פתוח"))
+  );
+}
+
 export function InstallerMonthlyPaymentsReportClient({
   report,
 }: InstallerMonthlyPaymentsReportClientProps) {
   const router = useRouter();
   const [openInstallerId, setOpenInstallerId] = useState<string | null>(null);
+  const [syncingInstallerId, setSyncingInstallerId] = useState<string | null>(null);
+  const [syncResult, setSyncResult] =
+    useState<InstallerMonthlyPaymentSyncResult | null>(null);
 
   function handleMonthChange(value: string) {
     if (!value) {
@@ -79,6 +93,80 @@ export function InstallerMonthlyPaymentsReportClient({
     }
 
     router.push(`/installers?paymentMonth=${value}`);
+  }
+
+  async function handleSyncMonthlyPayment(installer: InstallerMonthlyPaymentSummary) {
+    setSyncResult(null);
+    setSyncingInstallerId(installer.installerId);
+
+    try {
+      const result = await syncInstallerMonthlyPaymentAction(
+        installer.installerId,
+        report.selectedMonth,
+      );
+
+      setSyncResult(result);
+      setSyncingInstallerId(null);
+
+      if (result.ok) {
+        router.refresh();
+      }
+    } catch {
+      setSyncResult({
+        ok: false,
+        action: "blocked",
+        message: "סנכרון התשלום החודשי נכשל. נסו שוב או בדקו את הרשומה באיירטייבל.",
+      });
+      setSyncingInstallerId(null);
+    }
+  }
+
+  function renderMonthlyPaymentAction(installer: InstallerMonthlyPaymentSummary) {
+    const state = installer.monthlyPaymentRecord;
+    const isSyncing = syncingInstallerId === installer.installerId;
+
+    if (state.kind === "duplicate") {
+      return (
+        <span className="badge badge--danger">
+          קיימת כפילות רשומות תשלום — טיפול ידני נדרש
+        </span>
+      );
+    }
+
+    if (state.kind === "existing" && state.record.status === "שולם") {
+      return (
+        <span className="badge badge--success">
+          שולם — נעול
+        </span>
+      );
+    }
+
+    if (
+      state.kind === "existing" &&
+      state.record.status &&
+      state.record.status !== "פתוח"
+    ) {
+      return (
+        <span className="badge badge--muted">
+          {state.record.status} — נעול
+        </span>
+      );
+    }
+
+    return (
+      <button
+        className="task-row-actions__secondary"
+        type="button"
+        disabled={!canSyncMonthlyPayment(state) || syncingInstallerId !== null}
+        onClick={() => handleSyncMonthlyPayment(installer)}
+      >
+        {isSyncing
+          ? "מסנכרן..."
+          : state.kind === "missing"
+            ? "צור תשלום חודשי"
+            : "סנכרן תשלום פתוח"}
+      </button>
+    );
   }
 
   return (
@@ -103,6 +191,18 @@ export function InstallerMonthlyPaymentsReportClient({
           />
         </label>
       </div>
+
+      {syncResult ? (
+        <div
+          className={
+            syncResult.ok ? "task-update-success" : "task-update-error"
+          }
+          role="alert"
+          aria-live={syncResult.ok ? "polite" : "assertive"}
+        >
+          {syncResult.message}
+        </div>
+      ) : null}
 
       {report.installerSummaries.length === 0 ? (
         <div className="card__body placeholder">
@@ -139,15 +239,18 @@ export function InstallerMonthlyPaymentsReportClient({
                         )}
                       </td>
                       <td>
-                        <button
-                          className="task-row-actions__secondary"
-                          type="button"
-                          onClick={() =>
-                            setOpenInstallerId(isOpen ? null : installer.installerId)
-                          }
-                        >
-                          {isOpen ? "הסתר פירוט" : "הצג פירוט"}
-                        </button>
+                        <div className="task-row-actions">
+                          {renderMonthlyPaymentAction(installer)}
+                          <button
+                            className="task-row-actions__secondary"
+                            type="button"
+                            onClick={() =>
+                              setOpenInstallerId(isOpen ? null : installer.installerId)
+                            }
+                          >
+                            {isOpen ? "הסתר פירוט" : "הצג פירוט"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
 
