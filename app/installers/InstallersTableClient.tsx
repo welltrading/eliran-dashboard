@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PhoneText } from "@/components/ui/PhoneText";
 import type { Installer } from "@/lib/types";
 
 type PaidFilter = "הכל" | "שולם" | "לא שולם";
@@ -139,8 +140,8 @@ export function InstallersTableClient({
                     </a>
                   </td>
                   <td>{installer.name || installer.firstName || "-"}</td>
-                  <td>{installer.phone ?? "-"}</td>
-                  <td>{installer.mobile ?? "-"}</td>
+                  <td><PhoneText value={installer.phone} /></td>
+                  <td><PhoneText value={installer.mobile} /></td>
                   <td>
                     {installer.capabilities.length > 0
                       ? installer.capabilities.join(", ")

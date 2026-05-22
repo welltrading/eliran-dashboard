@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useMemo, useState, useTransition } from "react";
+import { PhoneText } from "@/components/ui/PhoneText";
 import type { Task, TaskStatus } from "@/lib/types";
 import {
   createStandaloneTaskAction,
@@ -808,7 +809,7 @@ export function TasksTableClient({
           </td>
           <td>{task.orderNumber ?? "-"}</td>
           <td>{task.customerName ?? "-"}</td>
-          <td>{task.phone ?? "-"}</td>
+          <td><PhoneText value={task.phone} /></td>
           <td>{task.address ?? "-"}</td>
           <td>
             <span className={scheduleBadgeClass(task)}>{scheduleLabel(task)}</span>
@@ -847,7 +848,7 @@ export function TasksTableClient({
       <div className="daily-schedule__details">
         <span>{task.installerName ?? "ללא מתקין"}</span>
         <span>{task.customerName ?? "-"}</span>
-        <span>{task.phone ?? "-"}</span>
+        <span><PhoneText value={task.phone} /></span>
         <span>{task.address ?? "-"}</span>
       </div>
     </article>

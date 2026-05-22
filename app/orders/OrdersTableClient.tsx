@@ -2,6 +2,7 @@
 
 import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { PhoneText } from "@/components/ui/PhoneText";
 import type { Order, TaskStatus } from "@/lib/types";
 import { createOrderTaskAction } from "./actions";
 
@@ -300,7 +301,7 @@ export function OrdersTableClient({
                 </td>
                 <td>{order.orderNumber || "-"}</td>
                 <td>{order.customerName || "-"}</td>
-                <td>{order.phone ?? "-"}</td>
+                <td><PhoneText value={order.phone} /></td>
                 <td>{order.orderType}</td>
                 <td>
                   {order.productSummary ? (

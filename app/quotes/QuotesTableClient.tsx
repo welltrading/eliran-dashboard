@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import { PhoneText } from "@/components/ui/PhoneText";
 import type { Quote, QuoteType } from "@/lib/types";
+import { createQuoteAction } from "./actions";
 import { CreateQuoteButton } from "./CreateQuoteButton";
 
 type QuoteTypeFilter = "הכל" | QuoteType;
@@ -54,7 +56,14 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
   const [search, setSearch] = useState("");
   const [quoteType, setQuoteType] = useState<QuoteTypeFilter>("הכל");
   const [status, setStatus] = useState<StatusFilter>("הכל");
+  const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
+  const [newQuoteType, setNewQuoteType] = useState<QuoteType>("סטנדרטי");
+  const [createFeedback, setCreateFeedback] = useState<{
+    kind: "success" | "error";
+    message: string;
+  } | null>(null);
   const [isRefreshing, startRefresh] = useTransition();
+  const [isCreatingQuote, startCreateQuote] = useTransition();
 
   const filteredQuotes = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -77,8 +86,209 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
     });
   }, [quotes, quoteType, search, status]);
 
+  function handleCreateQuote(formData: FormData) {
+    if (isCreatingQuote) {
+      return;
+    }
+
+    setCreateFeedback(null);
+
+    startCreateQuote(async () => {
+      const rawQuantity = String(formData.get("quantity") ?? "").trim();
+      const result = await createQuoteAction({
+        customerName: String(formData.get("customerName") ?? ""),
+        phone: String(formData.get("phone") ?? ""),
+        quoteType: String(formData.get("quoteType") ?? "סטנדרטי") as QuoteType,
+        totalPrice: Number(formData.get("totalPrice") ?? 0),
+        quantity: rawQuantity ? Number(rawQuantity) : null,
+        leadSource: String(formData.get("leadSource") ?? "") || null,
+        notes: String(formData.get("notes") ?? "") || null,
+        customProductDescription:
+          String(formData.get("customProductDescription") ?? "") || null,
+      });
+
+      if (result.ok) {
+        setCreateFeedback({ kind: "success", message: result.message });
+        setIsCreatePanelOpen(false);
+        setNewQuoteType("סטנדרטי");
+        router.refresh();
+        return;
+      }
+
+      setCreateFeedback({
+        kind: "error",
+        message: [result.message, ...result.errors].filter(Boolean).join(" "),
+      });
+    });
+  }
+
   return (
     <>
+      <section className="standalone-task-creator" aria-label="יצירת הצעת מחיר">
+        <div className="standalone-task-creator__header">
+          <div>
+            <h2>הצעת מחיר חדשה</h2>
+            <p>יצירת רשומת הצעת מחיר בסיסית באירטייבל.</p>
+          </div>
+          <button
+            className="primary-action"
+            type="button"
+            onClick={() => {
+              setCreateFeedback(null);
+              setIsCreatePanelOpen((current) => !current);
+            }}
+            disabled={isCreatingQuote}
+          >
+            + צור הצעת מחיר חדשה
+          </button>
+        </div>
+
+        {createFeedback ? (
+          <div
+            className={
+              createFeedback.kind === "success"
+                ? "task-update-success"
+                : "task-update-error"
+            }
+            role={createFeedback.kind === "success" ? "status" : "alert"}
+            aria-live="polite"
+          >
+            {createFeedback.message}
+          </div>
+        ) : null}
+
+        {isCreatePanelOpen ? (
+          <form
+            className="standalone-task-creator__form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleCreateQuote(new FormData(event.currentTarget));
+            }}
+          >
+            <div className="task-assignment-editor__fields standalone-task-creator__fields">
+              <label className="filter-field">
+                <span className="filter-label">שם לקוח</span>
+                <input
+                  className="filter-input"
+                  name="customerName"
+                  required
+                  disabled={isCreatingQuote}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">טלפון</span>
+                <input
+                  className="filter-input"
+                  name="phone"
+                  required
+                  disabled={isCreatingQuote}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">סוג הצעה</span>
+                <select
+                  className="filter-select"
+                  name="quoteType"
+                  value={newQuoteType}
+                  onChange={(event) => setNewQuoteType(event.target.value as QuoteType)}
+                  disabled={isCreatingQuote}
+                >
+                  <option value="סטנדרטי">סטנדרטי</option>
+                  <option value="ייצור אישי">ייצור אישי</option>
+                </select>
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">מחיר בשקלים</span>
+                <input
+                  className="filter-input"
+                  name="totalPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue="0"
+                  required
+                  disabled={isCreatingQuote}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">כמות</span>
+                <input
+                  className="filter-input"
+                  name="quantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  defaultValue="1"
+                  disabled={isCreatingQuote}
+                />
+              </label>
+
+              <label className="filter-field">
+                <span className="filter-label">מקור הגעה</span>
+                <select
+                  className="filter-select"
+                  name="leadSource"
+                  defaultValue=""
+                  disabled={isCreatingQuote}
+                >
+                  <option value="">ללא מקור</option>
+                  <option value="מדרג">מדרג</option>
+                  <option value="מקצוענים">מקצוענים</option>
+                  <option value="גוגל">גוגל</option>
+                  <option value="המלצה">המלצה</option>
+                  <option value="אחר">אחר</option>
+                </select>
+              </label>
+
+              {newQuoteType === "ייצור אישי" ? (
+                <label className="filter-field standalone-task-creator__notes">
+                  <span className="filter-label">תיאור מוצר ייצור אישי</span>
+                  <textarea
+                    className="filter-input"
+                    name="customProductDescription"
+                    rows={3}
+                    required
+                    disabled={isCreatingQuote}
+                  />
+                </label>
+              ) : null}
+
+              <label className="filter-field standalone-task-creator__notes">
+                <span className="filter-label">הערות</span>
+                <textarea
+                  className="filter-input"
+                  name="notes"
+                  rows={3}
+                  disabled={isCreatingQuote}
+                />
+              </label>
+            </div>
+
+            <div className="task-assignment-editor__actions">
+              <button
+                className="primary-action"
+                type="submit"
+                disabled={isCreatingQuote}
+              >
+                {isCreatingQuote ? "יוצר הצעה..." : "צור הצעת מחיר"}
+              </button>
+              <button
+                className="task-row-actions__secondary"
+                type="button"
+                disabled={isCreatingQuote}
+                onClick={() => setIsCreatePanelOpen(false)}
+              >
+                ביטול
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </section>
+
       <div className="filters-bar" aria-label="סינון הצעות מחיר">
         <label className="filter-field filter-field--search">
           <span className="filter-label">חיפוש</span>
@@ -181,7 +391,7 @@ export function QuotesTableClient({ quotes }: QuotesTableClientProps) {
                       )}
                     </td>
                     <td>{quote.customerName || "-"}</td>
-                    <td>{quote.phone ?? "-"}</td>
+                    <td><PhoneText value={quote.phone} /></td>
                     <td>{quote.quoteType}</td>
                     <td>{quote.status || "-"}</td>
                     <td>{formatDate(quote.createdAt)}</td>
