@@ -23,6 +23,7 @@ export type CreateOrderFromQuoteInput = {
   quoteId: string;
   customerName: string;
   phone: string;
+  address: string;
   orderType: OrderType;
   orderStatus: string;
   shortNotes: string;
@@ -32,6 +33,7 @@ export type CreateOrderFromQuoteInput = {
 type CreatedOrderFields = {
   fldZEobEKEQtMtoGV?: string;
   fld5bh56XRJGJhrsz?: string;
+  fldzNnG3a9uojQPyO?: string;
   flduurO6CcPQx6oya?: string;
   fldwvbnGd8e3PAU7d?: string;
   fldFRK1Kz26jE99xR?: string;
@@ -170,6 +172,7 @@ function normalizeInput(input: CreateOrderFromQuoteInput): CreateOrderFromQuoteI
     ...input,
     customerName: normalizedText(input.customerName),
     phone: normalizedText(input.phone),
+    address: normalizedText(input.address),
     shortNotes: normalizedText(input.shortNotes),
     lines: input.lines
       .map(normalizeLine)
@@ -273,6 +276,12 @@ export async function createOrderFromQuote(input: CreateOrderFromQuoteInput) {
 
   if (shortNotes) {
     orderFields.fldFRK1Kz26jE99xR = shortNotes;
+  }
+
+  const address = normalizeOptionalText(normalizedInput.address);
+
+  if (address) {
+    orderFields.fldzNnG3a9uojQPyO = address;
   }
 
   if (quote.leadSource && leadSources.includes(quote.leadSource)) {

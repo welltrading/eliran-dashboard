@@ -182,6 +182,7 @@ export type RawQuoteFields = {
   fldFfYboIrcFejtHN?: unknown;
   fld07wwSMqvzYk0s4?: unknown;
   fldPYvrQHENHZC8pJ?: unknown;
+  fldhF5IRofdRLTkhN?: unknown;
   fldf9PSV2gFZxXsxY?: unknown;
   fldN4EILKJZND3FOf?: unknown;
   fldOY3RLPblIPoz60?: unknown;

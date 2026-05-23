@@ -141,6 +141,7 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
   const [isPending, startTransition] = useTransition();
   const [customerName, setCustomerName] = useState(quote.customerName);
   const [phone, setPhone] = useState(quote.phone ?? "");
+  const [address, setAddress] = useState(quote.address ?? "");
   const [orderType, setOrderType] = useState<OrderType>(quote.quoteType);
   const [orderStatus, setOrderStatus] = useState<OrderStatus>("חדשה");
   const [totalPrice, setTotalPrice] = useState(quote.totalPrice);
@@ -245,6 +246,7 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
         quoteId: quote.id,
         customerName,
         phone,
+        address,
         orderType,
         orderStatus,
         shortNotes,
@@ -320,6 +322,14 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
           <label className="form-field">
             <span>טלפון</span>
             <input value={phone} onChange={(event) => setPhone(event.target.value)} />
+          </label>
+
+          <label className="form-field form-field--wide">
+            <span>כתובת</span>
+            <input
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+            />
           </label>
 
           <label className="form-field">

@@ -71,6 +71,7 @@ export function mapQuote(record: RawRecord): Quote {
       textValue(record.fields.fldf9PSV2gFZxXsxY),
     customerName: textValue(record.fields.fld07wwSMqvzYk0s4),
     phone: nullableTextValue(record.fields.fldPYvrQHENHZC8pJ),
+    address: nullableTextValue(record.fields.fldhF5IRofdRLTkhN),
     quoteType: quoteType(textValue(record.fields.fldN4EILKJZND3FOf)),
     status: textValue(record.fields.fldzlKcHkLftZVxFM),
     createdAt: nullableTextValue(record.fields.fldF5hky2jB0vs5GY),

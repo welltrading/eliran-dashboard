@@ -327,6 +327,7 @@ export type Quote = {
   quoteNumber: string;
   customerName: string;
   phone: string | null;
+  address: string | null;
   quoteType: QuoteType;
   status: string;
   createdAt: string | null;
