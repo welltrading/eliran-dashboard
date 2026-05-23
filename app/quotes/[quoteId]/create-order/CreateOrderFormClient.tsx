@@ -304,7 +304,7 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
         <div className="section-heading">
           <div>
             <h2>פרטי הזמנה</h2>
-            <p>טופס בדיקה בלבד. שמירה ל-Airtable תתווסף בשלב הבא.</p>
+            <p>ההזמנה תישמר באיירטייבל ותיקושר להצעת המחיר.</p>
           </div>
         </div>
 
@@ -660,7 +660,7 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
                   <td>
                     {stockImpactLabel(orderType, line)}
                   </td>
-                  <td>לא יישמר בשלב זה</td>
+                  <td>תיווצר שורת הזמנה לפי סוג ההצעה</td>
                 </tr>
               ))}
             </tbody>
@@ -678,7 +678,7 @@ export function CreateOrderFormClient({ quote, products }: CreateOrderFormClient
               ))}
             </ul>
               ) : (
-                <p>הטופס תקין לבדיקה. שמירה תתווסף בשלב הבא.</p>
+                <p>הטופס תקין. לאחר יצירה, תיווצר הזמנה ושורת הזמנה.</p>
               )}
         </div>
 
