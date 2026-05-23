@@ -56,7 +56,13 @@ function orderTypeValue(value: unknown): OrderType {
   return normalized === "ייצור אישי" ? "ייצור אישי" : "סטנדרטי";
 }
 
+function booleanValue(value: unknown) {
+  return value === true;
+}
+
 export function mapOrder(record: RawRecord): Order {
+  const easyCountStatus = nullableTextValue(record.fields.fldws1tElgJlhMLR7);
+
   return {
     id: record.id,
     orderNumber: textValue(record.fields.fldDrP4MqsxV6EtJd),
@@ -66,13 +72,17 @@ export function mapOrder(record: RawRecord): Order {
     status: textValue(record.fields.fldwvbnGd8e3PAU7d),
     createdAt: nullableTextValue(record.fields.flde2no9Qoof141vN),
     totalPrice: numberValue(record.fields.flddZQjojnGZeZ5By),
+    easyCountDocumentId: nullableTextValue(record.fields.fldRZSAngZ2MzRg9v),
     easyCountDocumentNumber: nullableTextValue(record.fields.fldoXRciteMB9WdfP),
     easyCountDocumentUrl: urlValue(record.fields.fld9OEARVSvYDuEdR),
+    easyCountStatus,
+    easyCountError: nullableTextValue(record.fields.fldJlbQJWexlStXRn),
+    invoiceReceiptRequested: booleanValue(record.fields.fldUHtJ82z3U2eG6W),
     shortNotes: nullableTextValue(record.fields.fldFRK1Kz26jE99xR),
     orderLineIds: Array.isArray(record.fields.fldIJzxGrwPaDNACs)
       ? record.fields.fldIJzxGrwPaDNACs.filter((item): item is string => typeof item === "string")
       : [],
-    sendStatus: textValue(record.fields.fldws1tElgJlhMLR7) || null,
+    sendStatus: easyCountStatus,
     productSummary: nullableTextValue(record.fields.fldVRFNFHjfXCzfD6),
   };
 }

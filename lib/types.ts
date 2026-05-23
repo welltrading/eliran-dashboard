@@ -210,8 +210,12 @@ export type Order = {
   status: string;
   createdAt: string | null;
   totalPrice: number;
+  easyCountDocumentId: string | null;
   easyCountDocumentNumber: string | null;
   easyCountDocumentUrl: string | null;
+  easyCountStatus: string | null;
+  easyCountError: string | null;
+  invoiceReceiptRequested: boolean;
   shortNotes: string | null;
   orderLineIds: string[];
   sendStatus: string | null;

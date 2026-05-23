@@ -87,12 +87,15 @@ export type RawOrderFields = {
   fldwvbnGd8e3PAU7d?: unknown;
   flde2no9Qoof141vN?: unknown;
   flddZQjojnGZeZ5By?: unknown;
+  fldRZSAngZ2MzRg9v?: unknown;
   fldcsD7TEjjYB6kz3?: unknown;
   fldoXRciteMB9WdfP?: unknown;
   fld9OEARVSvYDuEdR?: unknown;
   fldFRK1Kz26jE99xR?: unknown;
   fldIJzxGrwPaDNACs?: unknown;
   fldws1tElgJlhMLR7?: unknown;
+  fldJlbQJWexlStXRn?: unknown;
+  fldUHtJ82z3U2eG6W?: unknown;
   fldVRFNFHjfXCzfD6?: unknown;
 };
 

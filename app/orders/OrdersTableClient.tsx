@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PhoneText } from "@/components/ui/PhoneText";
 import type { Order, TaskStatus } from "@/lib/types";
 import { createOrderTaskAction } from "./actions";
+import { CreateInvoiceButton } from "./CreateInvoiceButton";
 
 type TaskInstallerOption = {
   id: string;
@@ -317,18 +318,11 @@ export function OrdersTableClient({
                   {order.easyCountDocumentNumber ? (
                     <div>{order.easyCountDocumentNumber}</div>
                   ) : null}
-                  {order.easyCountDocumentUrl ? (
-                    <a
-                      href={order.easyCountDocumentUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      פתיחת מסמך
-                    </a>
-                  ) : null}
-                  {!order.easyCountDocumentNumber && !order.easyCountDocumentUrl
-                    ? "-"
-                    : null}
+                  <CreateInvoiceButton
+                    recordId={order.id}
+                    orderType={order.orderType}
+                    easyCountDocumentUrl={order.easyCountDocumentUrl}
+                  />
                 </td>
                 <td>{order.shortNotes ?? "-"}</td>
               </tr>
