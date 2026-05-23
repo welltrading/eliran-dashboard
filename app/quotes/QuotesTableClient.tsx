@@ -55,8 +55,9 @@ function matchesStatus(status: string, filter: StatusFilter) {
 export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [quoteType, setQuoteType] = useState<QuoteTypeFilter>("הכל");
+  const [quoteTypeFilter, setQuoteTypeFilter] = useState<QuoteTypeFilter>("הכל");
   const [status, setStatus] = useState<StatusFilter>("הכל");
+  const [createQuoteType, setCreateQuoteType] = useState<QuoteType>("סטנדרטי");
   const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
   const [createFeedback, setCreateFeedback] = useState<{
     kind: "success" | "error";
@@ -79,12 +80,13 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
 
       const searchMatches =
         !normalizedSearch || searchableText.includes(normalizedSearch);
-      const typeMatches = quoteType === "הכל" || quote.quoteType === quoteType;
+      const typeMatches =
+        quoteTypeFilter === "הכל" || quote.quoteType === quoteTypeFilter;
       const statusMatches = matchesStatus(quote.status, status);
 
       return searchMatches && typeMatches && statusMatches;
     });
-  }, [quotes, quoteType, search, status]);
+  }, [quotes, quoteTypeFilter, search, status]);
 
   async function handleCreateQuote(form: HTMLFormElement) {
     if (isCreatingQuote) {
@@ -97,20 +99,51 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
 
     try {
       const rawQuantity = String(formData.get("quantity") ?? "").trim();
-      const result = await createQuoteAction({
+      const commonFields = {
         customerName: String(formData.get("customerName") ?? ""),
         phone: String(formData.get("phone") ?? ""),
         address: String(formData.get("address") ?? ""),
-        productId: String(formData.get("productId") ?? ""),
         totalPrice: Number(formData.get("totalPrice") ?? 0),
         quantity: rawQuantity ? Number(rawQuantity) : 0,
         leadSource: String(formData.get("leadSource") ?? "") || null,
         notes: String(formData.get("notes") ?? "") || null,
-      });
+      };
+      const rawFixedPricePerSqm = String(
+        formData.get("fixedPricePerSqm") ?? "",
+      ).trim();
+      const result =
+        createQuoteType === "ייצור אישי"
+          ? await createQuoteAction({
+              ...commonFields,
+              quoteType: "ייצור אישי",
+              customProductDescription: String(
+                formData.get("customProductDescription") ?? "",
+              ),
+              measurementRequired: String(
+                formData.get("measurementRequired") ?? "",
+              ),
+              dismantlingOption: String(
+                formData.get("dismantlingOption") ?? "",
+              ),
+              fixedPricePerSqm: rawFixedPricePerSqm
+                ? Number(rawFixedPricePerSqm)
+                : null,
+              widthCm: Number(formData.get("widthCm") ?? 0),
+              depthCm: Number(formData.get("depthCm") ?? 0),
+              heightM: Number(formData.get("heightM") ?? 0),
+              glassType: String(formData.get("glassType") ?? ""),
+              hardwareColor: String(formData.get("hardwareColor") ?? ""),
+            })
+          : await createQuoteAction({
+              ...commonFields,
+              quoteType: "סטנדרטי",
+              productId: String(formData.get("productId") ?? ""),
+            });
 
       if (result.ok) {
         setCreateFeedback({ kind: "success", message: result.message });
         form.reset();
+        setCreateQuoteType("סטנדרטי");
         setIsCreatePanelOpen(false);
         router.refresh();
         return;
@@ -136,7 +169,11 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
         <div className="standalone-task-creator__header">
           <div>
             <h2>הצעת מחיר חדשה</h2>
-            <p>יצירת הצעת מחיר סטנדרטית עם מוצר מקושר.</p>
+            <p>
+              {createQuoteType === "סטנדרטי"
+                ? "יצירת הצעת מחיר סטנדרטית עם מוצר מקושר."
+                : "יצירת הצעת מחיר ייצור אישי לפי פרטי לקוח ומידות."}
+            </p>
           </div>
           <button
             className="primary-action"
@@ -175,7 +212,9 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
           >
             <div className="task-assignment-editor__fields standalone-task-creator__fields">
               <label className="filter-field">
-                <span className="filter-label">שם לקוח</span>
+                <span className="filter-label">
+                  {createQuoteType === "ייצור אישי" ? "שם הלקוח" : "שם לקוח"}
+                </span>
                 <input
                   className="filter-input"
                   name="customerName"
@@ -185,7 +224,9 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
               </label>
 
               <label className="filter-field">
-                <span className="filter-label">טלפון</span>
+                <span className="filter-label">
+                  {createQuoteType === "ייצור אישי" ? "נייד" : "טלפון"}
+                </span>
                 <input
                   className="filter-input"
                   name="phone"
@@ -206,26 +247,172 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
 
               <label className="filter-field">
                 <span className="filter-label">סוג הצעה</span>
-                <span className="badge badge--success">סטנדרטי</span>
-              </label>
-
-              <label className="filter-field standalone-task-creator__notes">
-                <span className="filter-label">מוצר</span>
                 <select
                   className="filter-select"
-                  name="productId"
-                  defaultValue=""
-                  required
+                  name="quoteType"
+                  value={createQuoteType}
+                  onChange={(event) =>
+                    setCreateQuoteType(event.target.value as QuoteType)
+                  }
                   disabled={isCreatingQuote}
                 >
-                  <option value="">בחר מוצר</option>
-                  {products.map((product) => (
-                    <option value={product.id} key={product.id}>
-                      {product.selectLabel}
-                    </option>
-                  ))}
+                  <option value="סטנדרטי">סטנדרטי</option>
+                  <option value="ייצור אישי">ייצור אישי</option>
                 </select>
               </label>
+
+              {createQuoteType === "סטנדרטי" ? (
+                <label className="filter-field standalone-task-creator__notes">
+                  <span className="filter-label">מוצר</span>
+                  <select
+                    className="filter-select"
+                    name="productId"
+                    defaultValue=""
+                    required
+                    disabled={isCreatingQuote}
+                  >
+                    <option value="">בחר מוצר</option>
+                    {products.map((product) => (
+                      <option value={product.id} key={product.id}>
+                        {product.selectLabel}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <>
+                  <label className="filter-field standalone-task-creator__notes">
+                    <span className="filter-label">תיאור מוצר</span>
+                    <textarea
+                      className="filter-input"
+                      name="customProductDescription"
+                      rows={3}
+                      required
+                      disabled={isCreatingQuote}
+                    />
+                  </label>
+
+                  <label className="filter-field">
+                    <span className="filter-label">נדרשת מדידה?</span>
+                    <select
+                      className="filter-select"
+                      name="measurementRequired"
+                      defaultValue=""
+                      required
+                      disabled={isCreatingQuote}
+                    >
+                      <option value="">בחר</option>
+                      <option value="כן">כן</option>
+                      <option value="לא">לא</option>
+                    </select>
+                  </label>
+
+                  <label className="filter-field">
+                    <span className="filter-label">אפשרות פירוק</span>
+                    <select
+                      className="filter-select"
+                      name="dismantlingOption"
+                      defaultValue=""
+                      required
+                      disabled={isCreatingQuote}
+                    >
+                      <option value="">בחר</option>
+                      <option value="נדרש פירוק">נדרש פירוק</option>
+                      <option value="לא נדרש פירוק">לא נדרש פירוק</option>
+                    </select>
+                  </label>
+
+                  <label className="filter-field">
+                    <span className="filter-label">מחיר קבוע למ"ר</span>
+                    <input
+                      className="filter-input"
+                      name="fixedPricePerSqm"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      disabled={isCreatingQuote}
+                    />
+                  </label>
+
+                  <label className="filter-field">
+                    <span className="filter-label">מידות לקוח רוחב (ס"מ)</span>
+                    <input
+                      className="filter-input"
+                      name="widthCm"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      disabled={isCreatingQuote}
+                    />
+                  </label>
+
+                  <label className="filter-field">
+                    <span className="filter-label">מידות לקוח עומק (ס"מ)</span>
+                    <input
+                      className="filter-input"
+                      name="depthCm"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      disabled={isCreatingQuote}
+                    />
+                  </label>
+
+                  <label className="filter-field">
+                    <span className="filter-label">גובה מקלחון (מטר)</span>
+                    <input
+                      className="filter-input"
+                      name="heightM"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      disabled={isCreatingQuote}
+                    />
+                  </label>
+
+                  <label className="filter-field">
+                    <span className="filter-label">זכוכית</span>
+                    <select
+                      className="filter-select"
+                      name="glassType"
+                      defaultValue=""
+                      required
+                      disabled={isCreatingQuote}
+                    >
+                      <option value="">בחר זכוכית</option>
+                      <option value="גרניט">גרניט</option>
+                      <option value="שקופה">שקופה</option>
+                      <option value="פסים">פסים</option>
+                      <option value="ברונזה">ברונזה</option>
+                      <option value="מושחר">מושחר</option>
+                      <option value="גלינה">גלינה</option>
+                    </select>
+                  </label>
+
+                  <label className="filter-field">
+                    <span className="filter-label">צבע פרזול</span>
+                    <select
+                      className="filter-select"
+                      name="hardwareColor"
+                      defaultValue=""
+                      required
+                      disabled={isCreatingQuote}
+                    >
+                      <option value="">בחר צבע</option>
+                      <option value="גרפיט">גרפיט</option>
+                      <option value="לבן">לבן</option>
+                      <option value="ניקל">ניקל</option>
+                      <option value="שחור">שחור</option>
+                      <option value="זהב">זהב</option>
+                      <option value="מוברש">מוברש</option>
+                      <option value="ברונזה">ברונזה</option>
+                    </select>
+                  </label>
+                </>
+              )}
 
               <label className="filter-field">
                 <span className="filter-label">כמות</span>
@@ -241,7 +428,11 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
               </label>
 
               <label className="filter-field">
-                <span className="filter-label">מחיר בשקלים</span>
+                <span className="filter-label">
+                  {createQuoteType === "ייצור אישי"
+                    ? "מחיר כולל ייצור אישי"
+                    : "מחיר בשקלים"}
+                </span>
                 <input
                   className="filter-input"
                   name="totalPrice"
@@ -255,7 +446,12 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
 
               <label className="filter-field">
                 <span className="filter-label">מקור הגעה</span>
-                <select className="filter-select" name="leadSource" defaultValue="" disabled={isCreatingQuote}>
+                <select
+                  className="filter-select"
+                  name="leadSource"
+                  defaultValue=""
+                  disabled={isCreatingQuote}
+                >
                   <option value="">ללא מקור</option>
                   <option value="מדרג">מדרג</option>
                   <option value="מקצוענים">מקצוענים</option>
@@ -313,8 +509,10 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
           <span className="filter-label">סוג הצעה</span>
           <select
             className="filter-select"
-            value={quoteType}
-            onChange={(event) => setQuoteType(event.target.value as QuoteTypeFilter)}
+            value={quoteTypeFilter}
+            onChange={(event) =>
+              setQuoteTypeFilter(event.target.value as QuoteTypeFilter)
+            }
           >
             <option value="הכל">הכל</option>
             <option value="סטנדרטי">סטנדרטי</option>
