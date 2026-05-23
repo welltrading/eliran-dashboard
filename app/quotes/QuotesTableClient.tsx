@@ -63,7 +63,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
     message: string;
   } | null>(null);
   const [isRefreshing, startRefresh] = useTransition();
-  const [isCreatingQuote, startCreateQuote] = useTransition();
+  const [isCreatingQuote, setIsCreatingQuote] = useState(false);
 
   const filteredQuotes = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -86,14 +86,16 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
     });
   }, [quotes, quoteType, search, status]);
 
-  function handleCreateQuote(formData: FormData) {
+  async function handleCreateQuote(form: HTMLFormElement) {
     if (isCreatingQuote) {
       return;
     }
 
+    const formData = new FormData(form);
     setCreateFeedback(null);
+    setIsCreatingQuote(true);
 
-    startCreateQuote(async () => {
+    try {
       const rawQuantity = String(formData.get("quantity") ?? "").trim();
       const result = await createQuoteAction({
         customerName: String(formData.get("customerName") ?? ""),
@@ -108,6 +110,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
 
       if (result.ok) {
         setCreateFeedback({ kind: "success", message: result.message });
+        form.reset();
         setIsCreatePanelOpen(false);
         router.refresh();
         return;
@@ -117,7 +120,14 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
         kind: "error",
         message: [result.message, ...result.errors].filter(Boolean).join(" "),
       });
-    });
+    } catch {
+      setCreateFeedback({
+        kind: "error",
+        message: "שגיאה ביצירת הצעת מחיר. נסו שוב.",
+      });
+    } finally {
+      setIsCreatingQuote(false);
+    }
   }
 
   return (
@@ -160,7 +170,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
             className="standalone-task-creator__form"
             onSubmit={(event) => {
               event.preventDefault();
-              handleCreateQuote(new FormData(event.currentTarget));
+              handleCreateQuote(event.currentTarget);
             }}
           >
             <div className="task-assignment-editor__fields standalone-task-creator__fields">
