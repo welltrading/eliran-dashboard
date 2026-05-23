@@ -113,6 +113,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const invoiceType = requestedOrderType ?? order.orderType;
+
     const makeResponse = await fetch(webhookUrl, {
       method: "POST",
       headers: {
@@ -121,7 +123,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         record_id: recordId,
         doc_type: "invoice_receipt",
-        order_type: requestedOrderType ?? order.orderType,
+        order_type: invoiceType,
+        quote_type: invoiceType,
       }),
     });
 
