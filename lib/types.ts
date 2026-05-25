@@ -229,7 +229,7 @@ export type Order = {
   shortNotes: string | null;
   orderLineIds: string[];
   sendStatus: string | null;
-  productSummary: string | null;
+  productDescription: string | null;
 };
 
 export type OrderLine = {

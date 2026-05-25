@@ -289,7 +289,7 @@ export function OrdersTableClient({
             <th>שם לקוח</th>
             <th>טלפון</th>
             <th>סוג הזמנה</th>
-            <th>מוצרים / תיאור הזמנה</th>
+            <th>תיאור מוצר</th>
             <th>סטטוס</th>
             <th>תאריך יצירה</th>
             <th>מחיר כולל</th>
@@ -328,8 +328,8 @@ export function OrdersTableClient({
                 <td><PhoneText value={order.phone} /></td>
                 <td>{order.orderType}</td>
                 <td>
-                  {order.productSummary ? (
-                    <div style={{ whiteSpace: "pre-line" }}>{order.productSummary}</div>
+                  {order.productDescription ? (
+                    <div style={{ whiteSpace: "pre-line" }}>{order.productDescription}</div>
                   ) : (
                     "-"
                   )}

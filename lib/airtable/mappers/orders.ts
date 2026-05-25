@@ -91,6 +91,6 @@ export function mapOrder(record: RawRecord): Order {
       ? record.fields.fldIJzxGrwPaDNACs.filter((item): item is string => typeof item === "string")
       : [],
     sendStatus: easyCountStatus,
-    productSummary: nullableTextValue(record.fields.fldVRFNFHjfXCzfD6),
+    productDescription: nullableTextValue(record.fields.fldvuJBwo3Qb4ub7p),
   };
 }
