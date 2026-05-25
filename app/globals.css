@@ -1125,7 +1125,37 @@ textarea {
 }
 
 .pending-approvals__table {
-  min-width: 980px;
+  min-width: 1160px;
+}
+
+.pending-approvals__main-cell {
+  display: grid;
+  gap: 3px;
+}
+
+.pending-approvals__main-cell strong {
+  font-size: 14px;
+}
+
+.pending-approvals__main-cell span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pending-approvals__reason {
+  display: inline-block;
+  max-width: 280px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.pending-approvals__reason--blocked {
+  color: var(--warning);
+  font-weight: 850;
 }
 
 .installer-rates__missing-table {
@@ -1152,6 +1182,27 @@ textarea {
   color: var(--muted);
   font-size: 12px;
   font-weight: 750;
+}
+
+.installer-monthly-report__payment-state--locked {
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  padding: 7px 8px;
+}
+
+.installer-monthly-report__locked-badge {
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.22);
+}
+
+.installer-monthly-report__locked-note {
+  color: var(--accent-strong);
+  font-weight: 900;
+}
+
+.installer-monthly-report__summary {
+  margin-bottom: 12px;
 }
 
 .installer-monthly-report__detail-row td {
@@ -1227,6 +1278,13 @@ textarea {
 
 .payment-reliability__table td {
   white-space: normal;
+}
+
+.payment-workspace__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .task-notes {

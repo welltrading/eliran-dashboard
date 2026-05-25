@@ -60,14 +60,31 @@ function renderMonthlyPaymentRecordState(state: InstallerMonthlyPaymentRecordSta
   }
 
   return (
-    <div className="installer-monthly-report__payment-state">
-      <span className="badge badge--success">
+    <div
+      className={`installer-monthly-report__payment-state${
+        state.record.status === "שולם"
+          ? " installer-monthly-report__payment-state--locked"
+          : ""
+      }`}
+    >
+      <span
+        className={
+          state.record.status === "שולם"
+            ? "badge badge--success installer-monthly-report__locked-badge"
+            : "badge badge--success"
+        }
+      >
         {state.record.status ?? "ללא סטטוס"}
       </span>
       <span>{formatCurrency(state.record.amount)}</span>
       <span>{state.record.includedApprovalCount} אישורים כלולים</span>
       {state.record.paymentDate ? (
-        <span>תשלום: {formatDate(state.record.paymentDate)}</span>
+        <span>תאריך תשלום: {formatDate(state.record.paymentDate)}</span>
+      ) : null}
+      {state.record.status === "שולם" ? (
+        <span className="installer-monthly-report__locked-note">
+          נעול מסנכרון ועדכון בדשבורד
+        </span>
       ) : null}
     </div>
   );
@@ -201,7 +218,13 @@ export function InstallerMonthlyPaymentsReportClient({
       const synced = isMonthlyPaymentSynced(installer);
 
       return (
-        <span className={synced ? "badge badge--success" : "badge badge--warning"}>
+        <span
+          className={
+            synced
+              ? "badge badge--success installer-monthly-report__locked-badge"
+              : "badge badge--warning"
+          }
+        >
           {synced ? "שולם — נעול" : "שולם — קיים פער מול הדוח"}
         </span>
       );
@@ -254,8 +277,8 @@ export function InstallerMonthlyPaymentsReportClient({
         <div>
           <h2>דוח סוף חודש — תשלומים למתקינים</h2>
           <p>
-            {report.totalApprovalCount} אישורים תקפים לחודש {report.airtableMonth} ·{" "}
-            {formatCurrency(report.totalAmount)}
+            מבוסס רק על אישורי ביצוע שאושרו ידנית לתשלום. אחרי סימון רשומה
+            כשולמה, הדשבורד חוסם סנכרון או עדכון נוסף.
           </p>
         </div>
 
@@ -291,7 +314,17 @@ export function InstallerMonthlyPaymentsReportClient({
           </div>
         </div>
       ) : (
-        <div className="table-wrap pending-approvals">
+        <div className="pending-approvals">
+          <div className="payment-workspace__chips installer-monthly-report__summary">
+            <span className="badge badge--success">
+              {report.totalApprovalCount} אישורים תקפים
+            </span>
+            <span className="badge badge--success">
+              {formatCurrency(report.totalAmount)}
+            </span>
+            <span className="badge badge--muted">חודש Airtable: {report.airtableMonth}</span>
+          </div>
+          <div className="table-wrap">
           <table className="data-table installer-monthly-report__table">
             <thead>
               <tr>
@@ -378,6 +411,7 @@ export function InstallerMonthlyPaymentsReportClient({
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </>

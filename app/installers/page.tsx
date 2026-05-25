@@ -41,7 +41,7 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
     ? resolvedSearchParams?.paymentMonth[0]
     : resolvedSearchParams?.paymentMonth;
   const [
-    { installers, summary },
+    { installers },
     pendingPaymentApprovalTasks,
     { rates, tasksWithoutRate },
     monthlyPaymentReport,
@@ -53,12 +53,28 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
     getInstallerMonthlyPaymentReport(requestedPaymentMonth),
     getPaymentReliabilityControlData(),
   ]);
+  const blockedPendingApprovalCount = pendingPaymentApprovalTasks.filter(
+    (task) => task.paymentWarning || !task.paymentAmount,
+  ).length;
+  const openMonthlyPaymentRecordCount =
+    monthlyPaymentReport.installerSummaries.filter((installer) => {
+      const state = installer.monthlyPaymentRecord;
+      return (
+        state.kind === "existing" &&
+        (!state.record.status || state.record.status === "פתוח")
+      );
+    }).length;
+  const paidLockedMonthlyPaymentRecordCount =
+    monthlyPaymentReport.installerSummaries.filter((installer) => {
+      const state = installer.monthlyPaymentRecord;
+      return state.kind === "existing" && state.record.status === "שולם";
+    }).length;
 
   return (
     <div className="page">
       <PageHeader
-        title="מתקינים"
-        description="מסך עבודה למעקב אחר מתקינים, משימות ואישורי תשלום."
+        title="מתקינים ותשלומים"
+        description="מרחב העבודה לאישור ביצוע ידני, דוח תשלומים חודשי וסגירת תשלום למתקינים."
       />
 
       <Card className="validation-card">
@@ -78,57 +94,47 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
       <div className="grid stats-grid inventory-summary">
         <Card>
           <div className="card__body stat-card">
-            <p className="stat-card__label">סה"כ מתקינים</p>
-            <p className="stat-card__value">{summary.totalInstallers}</p>
-            <p className="stat-card__note">מתוך טבלת מתקינים</p>
+            <p className="stat-card__label">ממתינות לאישור אלירן</p>
+            <p className="stat-card__value">{pendingPaymentApprovalTasks.length}</p>
+            <p className="stat-card__note">משימות שבוצעו ועדיין אינן מאושרות לתשלום</p>
           </div>
         </Card>
         <Card>
           <div className="card__body stat-card">
-            <p className="stat-card__label">עם טלפון / נייד</p>
-            <p className="stat-card__value">{summary.installersWithPhoneOrMobile}</p>
-            <p className="stat-card__note">רשומות עם פרטי קשר</p>
+            <p className="stat-card__label">חסומות לאישור</p>
+            <p className="stat-card__value">{blockedPendingApprovalCount}</p>
+            <p className="stat-card__note">חסר סכום, כפילות או אישור בעייתי</p>
           </div>
         </Card>
         <Card>
           <div className="card__body stat-card">
-            <p className="stat-card__label">סכום לתשלום</p>
+            <p className="stat-card__label">מאושר בחודש הנבחר</p>
             <p className="stat-card__value">
-              {formatCurrency(summary.totalApprovedAmountToPay)}
+              {formatCurrency(monthlyPaymentReport.totalAmount)}
             </p>
-            <p className="stat-card__note">Rollup מטבלת מתקינים</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="card__body stat-card">
-            <p className="stat-card__label">משימות החודש</p>
-            <p className="stat-card__value">{summary.tasksScheduledThisMonth}</p>
-            <p className="stat-card__note">לפי תאריך ביצוע</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="card__body stat-card">
-            <p className="stat-card__label">הושלמו ללא אישור</p>
-            <p className="stat-card__value">{summary.completedTasksPendingApproval}</p>
             <p className="stat-card__note">
-              {summary.completedTasksPendingApprovalIsBestEffort
-                ? "Best-effort לפי קישורי משימה"
-                : "לפי אישורי ביצוע"}
+              {monthlyPaymentReport.totalApprovalCount} אישורי ביצוע תקפים
             </p>
+          </div>
+        </Card>
+        <Card>
+          <div className="card__body stat-card">
+            <p className="stat-card__label">תשלומים פתוחים</p>
+            <p className="stat-card__value">{openMonthlyPaymentRecordCount}</p>
+            <p className="stat-card__note">רשומות חודשיות שניתן עדיין לסנכרן</p>
+          </div>
+        </Card>
+        <Card>
+          <div className="card__body stat-card">
+            <p className="stat-card__label">שולם / נעול</p>
+            <p className="stat-card__value">{paidLockedMonthlyPaymentRecordCount}</p>
+            <p className="stat-card__note">חסום מסנכרון ועדכון בדשבורד</p>
           </div>
         </Card>
       </div>
 
       <Card>
-        <TasksWithoutRateTable tasks={tasksWithoutRate} />
-      </Card>
-
-      <Card>
         <PendingPaymentApprovalsClient tasks={pendingPaymentApprovalTasks} />
-      </Card>
-
-      <Card>
-        <InstallerRatesTable rates={rates} />
       </Card>
 
       <Card>
@@ -137,6 +143,14 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
 
       <Card>
         <PaymentReliabilityControl data={paymentReliabilityControlData} />
+      </Card>
+
+      <Card>
+        <TasksWithoutRateTable tasks={tasksWithoutRate} />
+      </Card>
+
+      <Card>
+        <InstallerRatesTable rates={rates} />
       </Card>
 
       <Card>

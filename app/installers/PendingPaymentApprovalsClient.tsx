@@ -69,6 +69,32 @@ function approvalStateBadgeClass(task: PendingPaymentApprovalTask) {
   return "badge badge--muted";
 }
 
+function approvalWaitReason(task: PendingPaymentApprovalTask) {
+  if (task.paymentWarning) {
+    return task.paymentWarning;
+  }
+
+  if (!task.paymentAmount) {
+    return "חסר תעריף או סכום לתשלום. יש להשלים תעריף לפני אישור.";
+  }
+
+  if (task.paymentApprovalState === "pending_approval") {
+    return "קיים אישור ביצוע ממתין. לחיצה על אישור תהפוך אותו לאישור תקף לתשלום.";
+  }
+
+  if (task.paymentApprovalState === "no_approval") {
+    return "טרם נוצר אישור ביצוע. לחיצה על אישור תיצור אישור ביצוע ידני.";
+  }
+
+  return "נדרש אישור ידני של אלירן לפני כניסה לדוח התשלומים החודשי.";
+}
+
+function approvalReasonClass(task: PendingPaymentApprovalTask) {
+  return task.paymentWarning || !task.paymentAmount
+    ? "pending-approvals__reason pending-approvals__reason--blocked"
+    : "pending-approvals__reason";
+}
+
 export function PendingPaymentApprovalsClient({
   tasks,
 }: PendingPaymentApprovalsClientProps) {
@@ -76,6 +102,10 @@ export function PendingPaymentApprovalsClient({
   const [isPending, startTransition] = useTransition();
   const [approvingTaskId, setApprovingTaskId] = useState<string | null>(null);
   const [approvalError, setApprovalError] = useState<string | null>(null);
+  const blockedTaskCount = tasks.filter(
+    (task) => task.paymentWarning || !task.paymentAmount,
+  ).length;
+  const approvableTaskCount = tasks.length - blockedTaskCount;
 
   function handleApprove(task: PendingPaymentApprovalTask) {
     if (isPending || !task.paymentAmount || task.paymentWarning) {
@@ -116,11 +146,18 @@ export function PendingPaymentApprovalsClient({
     <>
       <div className="card__body pending-approvals__header">
         <div>
-          <h2>משימות שממתינות לאישור אלירן לתשלום</h2>
+          <h2>אישורי ביצוע ממתינים לאלירן</h2>
           <p>
-            {tasks.length} משימות שסומנו כבוצעו, יש להן מתקין, ועדיין אין להן
-            אישור תשלום תקף.
+            משימה נכנסת לתשלום רק אחרי אישור ידני של אלירן. האישור כאן יוצר
+            או מעדכן אישור ביצוע תקף לתשלום.
           </p>
+        </div>
+        <div className="payment-workspace__chips" aria-label="סיכום אישורים ממתינים">
+          <span className="badge badge--success">{approvableTaskCount} מוכנות לאישור</span>
+          <span className={blockedTaskCount > 0 ? "badge badge--warning" : "badge badge--muted"}>
+            {blockedTaskCount} חסומות
+          </span>
+          <span className="badge badge--muted">תמונת הוכחה: נדחה לשלב הבא</span>
         </div>
       </div>
 
@@ -142,6 +179,7 @@ export function PendingPaymentApprovalsClient({
               <th>סכום לתשלום</th>
               <th>מצב אישור ביצוע</th>
               <th>סיבת המתנה</th>
+              <th>הוכחה</th>
               <th>פעולה</th>
             </tr>
           </thead>
@@ -156,10 +194,25 @@ export function PendingPaymentApprovalsClient({
                   key={task.id}
                 >
                   <td>{formatDate(task.executionDate)}</td>
-                  <td>{task.customerName ?? "-"}</td>
-                  <td>{task.orderNumber ?? "-"}</td>
+                  <td>
+                    <div className="pending-approvals__main-cell">
+                      <strong>{task.customerName ?? "-"}</strong>
+                      <span>לקוח</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="pending-approvals__main-cell">
+                      <strong>{task.orderNumber ?? "-"}</strong>
+                      <span>הזמנה</span>
+                    </div>
+                  </td>
                   <td>{task.taskType ?? "-"}</td>
-                  <td>{task.installerName}</td>
+                  <td>
+                    <div className="pending-approvals__main-cell">
+                      <strong>{task.installerName}</strong>
+                      <span>מתקין</span>
+                    </div>
+                  </td>
                   <td>
                     {task.paymentAmount ? (
                       formatCurrency(task.paymentAmount)
@@ -173,13 +226,12 @@ export function PendingPaymentApprovalsClient({
                     </span>
                   </td>
                   <td>
-                    {task.paymentWarning ? (
-                      <span className="badge badge--warning">
-                        {task.paymentWarning}
-                      </span>
-                    ) : (
-                      "בוצע בפועל, יש מתקין, ואין אישור תשלום תקף."
-                    )}
+                    <span className={approvalReasonClass(task)}>
+                      {approvalWaitReason(task)}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="badge badge--muted">לא מוצג בשלב זה</span>
                   </td>
                   <td>
                     <button
