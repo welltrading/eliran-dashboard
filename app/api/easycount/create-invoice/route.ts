@@ -3,12 +3,14 @@ import { getAirtableConfig } from "@/lib/airtable/config";
 import { mapOrder } from "@/lib/airtable/mappers/orders";
 import type { RawOrderFields } from "@/lib/airtable/raw-types";
 import { airtableTables } from "@/lib/airtable/tables";
-import type { OrderType } from "@/lib/types";
+import type { Order, OrderType, PaymentStage } from "@/lib/types";
 
 type CreateInvoiceRequest = {
   record_id?: unknown;
   doc_type?: unknown;
   order_type?: unknown;
+  payment_stage?: unknown;
+  invoice_stage?: unknown;
 };
 
 type AirtableRecordResponse = {
@@ -63,6 +65,30 @@ function orderTypeValue(value: unknown): OrderType | null {
   return null;
 }
 
+function paymentStageValue(value: unknown): PaymentStage | null {
+  if (
+    value === "advance_60" ||
+    value === "full_payment" ||
+    value === "final_40"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function invoiceAmountForStage(order: Order, paymentStage: PaymentStage) {
+  if (paymentStage === "advance_60") {
+    return order.advancePaymentAmount;
+  }
+
+  if (paymentStage === "final_40") {
+    return order.remainingPaymentAmount;
+  }
+
+  return order.totalPrice;
+}
+
 export async function POST(request: Request) {
   let body: CreateInvoiceRequest;
 
@@ -78,6 +104,8 @@ export async function POST(request: Request) {
   const recordId =
     typeof body.record_id === "string" ? body.record_id.trim() : "";
   const requestedOrderType = orderTypeValue(body.order_type);
+  const paymentStage =
+    paymentStageValue(body.payment_stage) ?? paymentStageValue(body.invoice_stage);
 
   if (!recordId) {
     return NextResponse.json(
@@ -86,18 +114,47 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!paymentStage) {
+    return NextResponse.json(
+      { success: false, error: "Missing or invalid payment_stage" },
+      { status: 400 },
+    );
+  }
+
   try {
     const order = await getOrder(recordId);
 
-    if (order.easyCountDocumentUrl) {
+    const existingDocument =
+      paymentStage === "final_40"
+        ? order.easyCountFinalDocumentUrl || order.easyCountFinalDocumentId
+        : order.easyCountDocumentUrl || order.easyCountDocumentId;
+
+    if (existingDocument) {
       return NextResponse.json(
         {
           success: false,
-          error: "Order already has EZ_DOC_URL",
+          error:
+            paymentStage === "final_40"
+              ? "Order already has final invoice receipt"
+              : "Order already has invoice receipt",
           status: 409,
-          details: { ezDocUrl: order.easyCountDocumentUrl },
+          details: { paymentStage, existingDocument },
         },
         { status: 409 },
+      );
+    }
+
+    const amount = invoiceAmountForStage(order, paymentStage);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Order invoice amount is missing or invalid",
+          status: 400,
+          details: { paymentStage, amount },
+        },
+        { status: 400 },
       );
     }
 
@@ -123,6 +180,9 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         record_id: recordId,
         doc_type: "invoice_receipt",
+        amount,
+        payment_stage: paymentStage,
+        invoice_stage: paymentStage,
         order_type: invoiceType,
         quote_type: invoiceType,
       }),

@@ -1226,6 +1226,82 @@ textarea {
   min-width: 170px;
 }
 
+.orders-table {
+  min-width: 1320px;
+}
+
+.orders-table__invoice-cell {
+  min-width: 520px;
+}
+
+.order-payment-summary,
+.order-invoice-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.order-payment-summary {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.order-invoice-actions {
+  min-width: 500px;
+}
+
+.order-invoice-actions__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 5px 7px;
+}
+
+.order-invoice-actions__meta {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.order-invoice-actions__meta strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.order-invoice-actions__error {
+  color: var(--danger);
+}
+
+.order-invoice-actions .quote-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: auto;
+}
+
+.order-invoice-actions .quote-action__button {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.order-invoice-actions .quote-action__message {
+  max-width: 120px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
 .quote-action__button {
   min-height: 34px;
   width: max-content;

@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import type { OrderType } from "@/lib/types";
+import type { OrderType, PaymentStage } from "@/lib/types";
 
 type CreateInvoiceButtonProps = {
   recordId: string;
   orderType: OrderType;
-  easyCountDocumentUrl?: string | null;
+  paymentStage: PaymentStage;
+  existingDocumentId?: string | null;
+  existingDocumentUrl?: string | null;
+  createLabel: string;
+  loadingLabel: string;
+  existingLabel: string;
 };
 
 type RequestState = "idle" | "loading" | "success" | "error";
@@ -14,20 +19,29 @@ type RequestState = "idle" | "loading" | "success" | "error";
 export function CreateInvoiceButton({
   recordId,
   orderType,
-  easyCountDocumentUrl,
+  paymentStage,
+  existingDocumentId,
+  existingDocumentUrl,
+  createLabel,
+  loadingLabel,
+  existingLabel,
 }: CreateInvoiceButtonProps) {
   const [state, setState] = useState<RequestState>("idle");
   const [message, setMessage] = useState<string | null>(null);
 
   const trimmedRecordId = recordId.trim();
 
-  if (easyCountDocumentUrl) {
+  if (existingDocumentUrl || existingDocumentId) {
     return (
       <div className="quote-action">
-        <a href={easyCountDocumentUrl} target="_blank" rel="noreferrer">
-          פתיחת מסמך
-        </a>
-        <span className="quote-action__message">כבר נוצרה חשבונית מס קבלה</span>
+        {existingDocumentUrl ? (
+          <a href={existingDocumentUrl} target="_blank" rel="noreferrer">
+            פתיחה
+          </a>
+        ) : null}
+        {existingLabel ? (
+          <span className="quote-action__message">{existingLabel}</span>
+        ) : null}
       </div>
     );
   }
@@ -51,6 +65,8 @@ export function CreateInvoiceButton({
         body: JSON.stringify({
           record_id: trimmedRecordId,
           doc_type: "invoice_receipt",
+          payment_stage: paymentStage,
+          invoice_stage: paymentStage,
           order_type: orderType,
         }),
       });
@@ -89,7 +105,7 @@ export function CreateInvoiceButton({
         onClick={handleClick}
         disabled={state === "loading"}
       >
-        {state === "loading" ? "מפיק חשבונית..." : "הפקת חשבונית מס קבלה"}
+        {state === "loading" ? loadingLabel : createLabel}
       </button>
       {message ? (
         <span

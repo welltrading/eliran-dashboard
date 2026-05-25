@@ -3,7 +3,7 @@
 import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneText } from "@/components/ui/PhoneText";
-import type { Order, TaskStatus } from "@/lib/types";
+import type { Order, PaymentStage, TaskStatus } from "@/lib/types";
 import { createOrderTaskAction } from "./actions";
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 
@@ -53,6 +53,24 @@ function formatCurrency(value: number) {
     currency: "ILS",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatOptionalCurrency(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "-";
+  }
+
+  return formatCurrency(value);
+}
+
+function firstPaymentStage(order: Order): PaymentStage {
+  return order.paymentMode?.includes("מלא") ? "full_payment" : "advance_60";
+}
+
+function firstPaymentAmount(order: Order) {
+  return firstPaymentStage(order) === "full_payment"
+    ? order.totalPrice
+    : order.advancePaymentAmount;
 }
 
 export function OrdersTableClient({
@@ -120,7 +138,7 @@ export function OrdersTableClient({
 
     return (
       <tr className="tasks-table__assignment-row">
-        <td colSpan={11}>
+        <td colSpan={12}>
           <form
             className="task-assignment-editor"
             onSubmit={(event) => {
@@ -263,7 +281,7 @@ export function OrdersTableClient({
         </div>
       ) : null}
 
-      <table className="data-table">
+      <table className="data-table orders-table">
         <thead>
           <tr>
             <th>פעולה</th>
@@ -275,12 +293,17 @@ export function OrdersTableClient({
             <th>סטטוס</th>
             <th>תאריך יצירה</th>
             <th>מחיר כולל</th>
+            <th>תשלום</th>
             <th>מסמך EasyCount</th>
             <th>הערות קצרות</th>
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => (
+          {orders.map((order) => {
+            const initialPaymentStage = firstPaymentStage(order);
+            const showFinalInvoice = initialPaymentStage === "advance_60";
+
+            return (
             <Fragment key={order.id}>
               <tr>
                 <td>
@@ -315,20 +338,87 @@ export function OrdersTableClient({
                 <td>{formatDate(order.createdAt)}</td>
                 <td>{formatCurrency(order.totalPrice)}</td>
                 <td>
-                  {order.easyCountDocumentNumber ? (
-                    <div>{order.easyCountDocumentNumber}</div>
-                  ) : null}
-                  <CreateInvoiceButton
-                    recordId={order.id}
-                    orderType={order.orderType}
-                    easyCountDocumentUrl={order.easyCountDocumentUrl}
-                  />
+                  <div className="order-payment-summary">
+                    <span>{order.paymentMode || "-"}</span>
+                    <span>מקדמה: {formatOptionalCurrency(order.advancePaymentAmount)}</span>
+                    <span>יתרה: {formatOptionalCurrency(order.remainingPaymentAmount)}</span>
+                  </div>
+                </td>
+                <td className="orders-table__invoice-cell">
+                  <div className="order-invoice-actions">
+                    <div className="order-invoice-actions__item">
+                      <div className="order-invoice-actions__meta">
+                        <strong>
+                          {initialPaymentStage === "full_payment"
+                            ? "תשלום מלא"
+                            : "מקדמה 60%"}
+                        </strong>
+                        <span>{formatOptionalCurrency(firstPaymentAmount(order))}</span>
+                        {order.easyCountDocumentNumber ? (
+                          <span>מסמך {order.easyCountDocumentNumber}</span>
+                        ) : null}
+                        {order.easyCountStatus ||
+                        order.easyCountDocumentNumber ||
+                        order.easyCountDocumentUrl ? (
+                          <span>{order.easyCountStatus ?? "נשלח"}</span>
+                        ) : null}
+                        {order.easyCountError ? (
+                          <span className="order-invoice-actions__error">
+                            שגיאה: {order.easyCountError}
+                          </span>
+                        ) : null}
+                      </div>
+                      <CreateInvoiceButton
+                        recordId={order.id}
+                        orderType={order.orderType}
+                        paymentStage={initialPaymentStage}
+                        existingDocumentId={order.easyCountDocumentId}
+                        existingDocumentUrl={order.easyCountDocumentUrl}
+                        createLabel="הפקת חשבונית"
+                        loadingLabel="מפיק חשבונית..."
+                        existingLabel=""
+                      />
+                    </div>
+
+                    {showFinalInvoice ? (
+                      <div className="order-invoice-actions__item">
+                        <div className="order-invoice-actions__meta">
+                          <strong>יתרה 40%</strong>
+                          <span>{formatOptionalCurrency(order.remainingPaymentAmount)}</span>
+                          {order.easyCountFinalDocumentNumber ? (
+                          <span>מסמך {order.easyCountFinalDocumentNumber}</span>
+                        ) : null}
+                          {order.easyCountFinalStatus ||
+                          order.easyCountFinalDocumentNumber ||
+                          order.easyCountFinalDocumentUrl ? (
+                            <span>{order.easyCountFinalStatus ?? "נשלח"}</span>
+                          ) : null}
+                        {order.easyCountFinalError ? (
+                          <span className="order-invoice-actions__error">
+                              שגיאה: {order.easyCountFinalError}
+                            </span>
+                          ) : null}
+                        </div>
+                        <CreateInvoiceButton
+                          recordId={order.id}
+                          orderType={order.orderType}
+                          paymentStage="final_40"
+                          existingDocumentId={order.easyCountFinalDocumentId}
+                          existingDocumentUrl={order.easyCountFinalDocumentUrl}
+                          createLabel="הפקת יתרה"
+                          loadingLabel="מפיק יתרה..."
+                          existingLabel=""
+                        />
+                      </div>
+                    ) : null}
+                  </div>
                 </td>
                 <td>{order.shortNotes ?? "-"}</td>
               </tr>
               {openOrderId === order.id ? renderTaskForm(order) : null}
             </Fragment>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </>

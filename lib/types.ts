@@ -20,6 +20,8 @@ export type QuoteType = "סטנדרטי" | "ייצור אישי";
 
 export type OrderType = "סטנדרטי" | "ייצור אישי";
 
+export type PaymentStage = "advance_60" | "full_payment" | "final_40";
+
 export type FulfillmentSource = "חנות" | "מחסן" | "הזמנה מספק";
 
 export type DashboardStat = {
@@ -210,11 +212,19 @@ export type Order = {
   status: string;
   createdAt: string | null;
   totalPrice: number;
+  paymentMode: string | null;
+  advancePaymentAmount: number;
+  remainingPaymentAmount: number;
   easyCountDocumentId: string | null;
   easyCountDocumentNumber: string | null;
   easyCountDocumentUrl: string | null;
   easyCountStatus: string | null;
   easyCountError: string | null;
+  easyCountFinalDocumentId: string | null;
+  easyCountFinalDocumentNumber: string | null;
+  easyCountFinalDocumentUrl: string | null;
+  easyCountFinalStatus: string | null;
+  easyCountFinalError: string | null;
   invoiceReceiptRequested: boolean;
   shortNotes: string | null;
   orderLineIds: string[];
