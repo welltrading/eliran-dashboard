@@ -13,13 +13,30 @@ export const dynamic = "force-dynamic";
 const AIRTABLE_TASKS_TABLE_URL =
   "https://airtable.com/app77CdzKEqLlhZ8d/tblsodUowDPPiOcCk";
 
-export default async function TasksPage() {
+type TasksPageProps = {
+  searchParams?: Promise<{
+    orderId?: string | string[];
+  }>;
+};
+
+export default async function TasksPage({ searchParams }: TasksPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const orderId = Array.isArray(resolvedSearchParams?.orderId)
+    ? resolvedSearchParams?.orderId[0]
+    : resolvedSearchParams?.orderId;
   const [tasks, installerOptions, taskTypeOptions] = await Promise.all([
     getTasks(),
     getTaskInstallerOptions(),
     getTaskTypeOptions(),
   ]);
-  const summary = getTaskScheduleSummary(tasks);
+  const displayedTasks = orderId
+    ? tasks.filter((task) => task.orderIds.includes(orderId))
+    : tasks;
+  const orderNumberForFilter =
+    displayedTasks
+      .map((task) => task.orderNumber)
+      .find((value): value is string => Boolean(value)) ?? orderId;
+  const summary = getTaskScheduleSummary(displayedTasks);
 
   return (
     <div className="page page--wide">
@@ -43,6 +60,22 @@ export default async function TasksPage() {
           </a>
         </div>
       </Card>
+
+      {orderId ? (
+        <Card className="validation-card">
+          <div className="card__body task-filter-banner">
+            <div>
+              <strong>מציג משימות להזמנה {orderNumberForFilter}</strong>
+              <p>
+                הסינון מבוסס על קישור רשומת ההזמנה באירטייבל, לא על התאמת טקסט.
+              </p>
+            </div>
+            <a className="task-row-actions__secondary" href="/tasks">
+              נקה סינון
+            </a>
+          </div>
+        </Card>
+      ) : null}
 
       <div className="grid stats-grid tasks-summary">
         <Card>
@@ -108,7 +141,7 @@ export default async function TasksPage() {
 
       <Card>
         <TasksTableClient
-          tasks={tasks}
+          tasks={displayedTasks}
           installerOptions={installerOptions}
           taskTypeOptions={taskTypeOptions}
           airtableTasksTableUrl={AIRTABLE_TASKS_TABLE_URL}

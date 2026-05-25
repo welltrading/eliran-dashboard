@@ -228,6 +228,7 @@ export type Order = {
   invoiceReceiptRequested: boolean;
   shortNotes: string | null;
   orderLineIds: string[];
+  taskIds: string[];
   sendStatus: string | null;
   productDescription: string | null;
 };

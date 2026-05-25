@@ -302,25 +302,42 @@ export function OrdersTableClient({
           {orders.map((order) => {
             const initialPaymentStage = firstPaymentStage(order);
             const showFinalInvoice = initialPaymentStage === "advance_60";
+            const linkedTaskCount = order.taskIds.length;
 
             return (
             <Fragment key={order.id}>
               <tr>
                 <td>
                   <div className="task-row-actions">
-                    <button
-                      className="task-row-actions__secondary"
-                      type="button"
-                      onClick={() => {
-                        setFeedback(null);
-                        setOpenOrderId((current) =>
-                          current === order.id ? null : order.id,
-                        );
-                      }}
-                      disabled={isPending && savingOrderId !== order.id}
-                    >
-                      צור משימה להזמנה
-                    </button>
+                    {linkedTaskCount > 0 ? (
+                      <>
+                        <a
+                          className="task-row-actions__secondary"
+                          href={`/tasks?orderId=${encodeURIComponent(order.id)}`}
+                        >
+                          {linkedTaskCount === 1 ? "פתח משימה" : "פתח משימות"}
+                        </a>
+                        <span className="badge badge--success">
+                          {linkedTaskCount === 1
+                            ? "כבר קיימת משימה"
+                            : `קיימות ${linkedTaskCount} משימות`}
+                        </span>
+                      </>
+                    ) : (
+                      <button
+                        className="task-row-actions__secondary"
+                        type="button"
+                        onClick={() => {
+                          setFeedback(null);
+                          setOpenOrderId((current) =>
+                            current === order.id ? null : order.id,
+                          );
+                        }}
+                        disabled={isPending && savingOrderId !== order.id}
+                      >
+                        צור משימה להזמנה
+                      </button>
+                    )}
                   </div>
                 </td>
                 <td>{order.orderNumber || "-"}</td>
@@ -415,7 +432,9 @@ export function OrdersTableClient({
                   </div>
                 </td>
               </tr>
-              {openOrderId === order.id ? renderTaskForm(order) : null}
+              {openOrderId === order.id && linkedTaskCount === 0
+                ? renderTaskForm(order)
+                : null}
             </Fragment>
             );
           })}

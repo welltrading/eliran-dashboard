@@ -975,6 +975,25 @@ textarea {
   gap: 8px;
 }
 
+.task-filter-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.task-filter-banner strong {
+  display: block;
+  font-size: 16px;
+}
+
+.task-filter-banner p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
 .tasks-table {
   min-width: 1380px;
 }

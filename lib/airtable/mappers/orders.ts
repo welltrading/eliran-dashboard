@@ -60,6 +60,12 @@ function booleanValue(value: unknown) {
   return value === true;
 }
 
+function linkedRecordIds(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 export function mapOrder(record: RawRecord): Order {
   const easyCountStatus = nullableTextValue(record.fields.fldws1tElgJlhMLR7);
 
@@ -90,6 +96,7 @@ export function mapOrder(record: RawRecord): Order {
     orderLineIds: Array.isArray(record.fields.fldIJzxGrwPaDNACs)
       ? record.fields.fldIJzxGrwPaDNACs.filter((item): item is string => typeof item === "string")
       : [],
+    taskIds: linkedRecordIds(record.fields.fldEZ175gAwbH7vge),
     sendStatus: easyCountStatus,
     productDescription: nullableTextValue(record.fields.fldvuJBwo3Qb4ub7p),
   };
