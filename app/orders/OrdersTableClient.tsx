@@ -294,8 +294,8 @@ export function OrdersTableClient({
             <th>תאריך יצירה</th>
             <th>מחיר כולל</th>
             <th>תשלום</th>
-            <th>מסמך EasyCount</th>
             <th>הערות קצרות</th>
+            <th>מסמך EasyCount</th>
           </tr>
         </thead>
         <tbody>
@@ -344,6 +344,7 @@ export function OrdersTableClient({
                     <span>יתרה: {formatOptionalCurrency(order.remainingPaymentAmount)}</span>
                   </div>
                 </td>
+                <td>{order.shortNotes ?? "-"}</td>
                 <td className="orders-table__invoice-cell">
                   <div className="order-invoice-actions">
                     <div className="order-invoice-actions__item">
@@ -413,7 +414,6 @@ export function OrdersTableClient({
                     ) : null}
                   </div>
                 </td>
-                <td>{order.shortNotes ?? "-"}</td>
               </tr>
               {openOrderId === order.id ? renderTaskForm(order) : null}
             </Fragment>

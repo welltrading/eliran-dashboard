@@ -13,7 +13,7 @@ export default async function QuotesPage() {
   ]);
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <PageHeader
         title="הצעות מחיר"
         description="טבלת הצעות מחיר לקריאה בלבד מתוך Airtable."

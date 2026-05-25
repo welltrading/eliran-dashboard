@@ -21,7 +21,7 @@ const navItems = [
   { href: "/order-lines", label: "שורות הזמנה", icon: ListOrdered },
   { href: "/inventory", label: "מלאי לפי מיקום", icon: Warehouse },
   { href: "/inventory/movements", label: "תנועות מלאי", icon: Boxes },
-  { href: "/tasks", label: "משימות / התקנות", icon: Hammer },
+  { href: "/tasks", label: "משימות", icon: Hammer },
   { href: "/installers", label: "מתקינים", icon: PackageOpen },
   { href: "/customers", label: "לקוחות", icon: Users },
 ];

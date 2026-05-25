@@ -17,10 +17,10 @@ export default async function OrdersPage() {
   ]);
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <PageHeader title="הזמנות" description="רשימת הזמנות וסטטוס טיפול." />
       <Card>
-        <div className="table-wrap">
+        <div className="table-wrap orders-table-wrapper">
           {orders.length > 0 ? (
             <OrdersTableClient
               orders={orders}

@@ -22,9 +22,9 @@ export default async function TasksPage() {
   const summary = getTaskScheduleSummary(tasks);
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <PageHeader
-        title="משימות / התקנות"
+        title="משימות"
         description="מסך עבודה לתיאום משימות, מתקינים ולוחות זמנים מתוך טבלת משימות."
       />
 
