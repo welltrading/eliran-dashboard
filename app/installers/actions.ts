@@ -2,6 +2,7 @@
 
 import {
   approveTaskPayment,
+  createInstaller,
   markInstallerMonthlyPaymentPaid,
   syncInstallerMonthlyPayment,
 } from "@/lib/airtable/services/installers";
@@ -9,6 +10,16 @@ import type { InstallerMonthlyPaymentMutationResult } from "@/lib/types";
 
 export async function approveTaskPaymentAction(taskId: string) {
   return approveTaskPayment(taskId);
+}
+
+export async function createInstallerAction(input: {
+  firstName: string;
+  lastName?: string | null;
+  phone?: string | null;
+  mobile?: string | null;
+  email?: string | null;
+}) {
+  return createInstaller(input);
 }
 
 export async function syncInstallerMonthlyPaymentAction(

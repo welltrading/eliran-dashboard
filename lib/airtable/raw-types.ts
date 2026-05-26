@@ -14,6 +14,8 @@ export type RawInstallerFields = {
   fld0sR1uUVVUdSSKV?: unknown;
   fldNuwr5rLp0Vbicu?: unknown;
   fldEKq3y8mVAqnQZu?: unknown;
+  fld5Qhfq26o0cRHoo?: unknown;
+  fld1pT9vTum0JNiFa?: unknown;
   fldGiu9i3KciTcMSO?: unknown;
   fldpaHuYIWVkk9z17?: unknown;
   fldICb7wcohXGmKLV?: unknown;

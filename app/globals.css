@@ -895,6 +895,13 @@ textarea {
   white-space: nowrap;
 }
 
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -1705,6 +1712,18 @@ textarea {
   background: var(--accent);
   color: #ffffff;
   padding: 10px 16px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.secondary-action {
+  justify-self: start;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent-strong);
+  padding: 9px 15px;
   font-weight: 850;
   cursor: pointer;
 }

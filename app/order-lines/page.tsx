@@ -30,7 +30,7 @@ export default async function OrderLinesPage() {
   const orderLines = await getOrderLines();
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <PageHeader title="שורות הזמנה" description="פירוט פריטים ושירותים בתוך הזמנות." />
       <Card>
         <div className="table-wrap">

@@ -13,6 +13,7 @@ import {
 } from "./InstallerRatesControl";
 import { InstallerMonthlyPaymentsReportClient } from "./InstallerMonthlyPaymentsReportClient";
 import { InstallersTableClient } from "./InstallersTableClient";
+import { CreateInstallerFormClient } from "./CreateInstallerFormClient";
 import { PaymentReliabilityControl } from "./PaymentReliabilityControl";
 import { PendingPaymentApprovalsClient } from "./PendingPaymentApprovalsClient";
 
@@ -78,17 +79,7 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
       />
 
       <Card className="validation-card">
-        <div className="card__body exception-panel__header">
-          <p className="muted-text">הוספה ועריכת מתקינים מתבצעת כרגע באירטייבל.</p>
-          <a
-            className="primary-action"
-            href={AIRTABLE_INSTALLERS_TABLE_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
-            פתח טבלת מתקינים באירטייבל
-          </a>
-        </div>
+        <CreateInstallerFormClient airtableTableUrl={AIRTABLE_INSTALLERS_TABLE_URL} />
       </Card>
 
       <div className="grid stats-grid inventory-summary">

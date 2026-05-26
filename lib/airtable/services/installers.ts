@@ -78,6 +78,29 @@ type InstallerMonthlyPaymentPaidFields = {
   fldF8uamPnjnRE5xF: string;
 };
 
+type CreateInstallerFields = {
+  fld0sR1uUVVUdSSKV: string;
+  fld5Qhfq26o0cRHoo?: string;
+  fldNuwr5rLp0Vbicu?: string;
+  fldEKq3y8mVAqnQZu?: string;
+  fld1pT9vTum0JNiFa?: string;
+};
+
+export type CreateInstallerInput = {
+  firstName: string;
+  lastName?: string | null;
+  phone?: string | null;
+  mobile?: string | null;
+  email?: string | null;
+};
+
+export type CreateInstallerResult = {
+  ok: boolean;
+  message: string;
+  errors?: string[];
+  recordId?: string;
+};
+
 function textValue(value: unknown) {
   if (typeof value === "string") {
     return value.trim();
@@ -465,6 +488,15 @@ function isAirtableRecordId(value: string) {
   return /^rec[A-Za-z0-9]{14}$/.test(value);
 }
 
+function normalizeOptionalText(value?: string | null) {
+  const normalized = value?.trim() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+function isValidOptionalEmail(value: string | null) {
+  return !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 function sameStringSet(left: string[], right: string[]) {
   if (left.length !== right.length) {
     return false;
@@ -810,6 +842,80 @@ export async function getInstallers() {
     installers,
     summary: buildSummary(installers, taskRecords, approvalRecords),
   };
+}
+
+export async function createInstaller(
+  input: CreateInstallerInput,
+): Promise<CreateInstallerResult> {
+  const firstName = input.firstName.trim();
+  const lastName = normalizeOptionalText(input.lastName);
+  const phone = normalizeOptionalText(input.phone);
+  const mobile = normalizeOptionalText(input.mobile);
+  const email = normalizeOptionalText(input.email);
+  const errors: string[] = [];
+
+  if (!firstName) {
+    errors.push("שם פרטי הוא שדה חובה.");
+  }
+
+  if (!phone && !mobile) {
+    errors.push("יש להזין לפחות טלפון או נייד.");
+  }
+
+  if (!isValidOptionalEmail(email)) {
+    errors.push("כתובת האימייל אינה תקינה.");
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      message: "לא ניתן ליצור מתקין חדש.",
+      errors,
+    };
+  }
+
+  const fields: CreateInstallerFields = {
+    fld0sR1uUVVUdSSKV: firstName,
+  };
+
+  if (lastName) {
+    fields.fld5Qhfq26o0cRHoo = lastName;
+  }
+
+  if (phone) {
+    fields.fldNuwr5rLp0Vbicu = phone;
+  }
+
+  if (mobile) {
+    fields.fldEKq3y8mVAqnQZu = mobile;
+  }
+
+  if (email) {
+    fields.fld1pT9vTum0JNiFa = email;
+  }
+
+  try {
+    const createdRecord = await createRecord<RawInstallerFields>(
+      INSTALLERS_TABLE_ID,
+      fields,
+    );
+
+    return {
+      ok: true,
+      message: "המתקין נוצר בהצלחה.",
+      recordId: createdRecord.id,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: "יצירת המתקין ב-Airtable נכשלה.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת יצירת המתקין.",
+      ],
+    };
+  }
 }
 
 export async function getPendingPaymentApprovalTasks() {

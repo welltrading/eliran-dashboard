@@ -29,7 +29,7 @@ export default async function InventoryPage() {
   const negativeItems = items.filter((item) => item.status === "negative");
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <PageHeader title="מלאי לפי מיקום" description="כמויות זמינות לפי מחסן, רכב או אתר." />
       <div className="grid stats-grid inventory-summary">
         <Card>

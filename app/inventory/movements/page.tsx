@@ -61,7 +61,7 @@ export default async function InventoryMovementsPage() {
   );
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <PageHeader title="תנועות מלאי" description="כניסות, יציאות, העברות והתאמות מלאי." />
       <Card className="validation-card">
         <div className="card__body validation-list">
