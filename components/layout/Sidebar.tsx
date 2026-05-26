@@ -13,6 +13,7 @@ import {
   Users,
   Warehouse,
 } from "lucide-react";
+import { appBranding } from "@/lib/branding";
 
 const navItems = [
   { href: "/", label: "דשבורד", icon: Gauge },
@@ -40,10 +41,10 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <div className="sidebar__mark">א</div>
+        <div className="sidebar__mark">{appBranding.brandInitial}</div>
         <div>
-          <p className="sidebar__title">אלירן מקלחונים</p>
-          <p className="sidebar__subtitle">ניהול הזמנות, מלאי והתקנות</p>
+          <p className="sidebar__title">{appBranding.appName}</p>
+          <p className="sidebar__subtitle">{appBranding.purpose}</p>
         </div>
       </div>
 

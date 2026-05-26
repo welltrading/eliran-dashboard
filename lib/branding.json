@@ -1,0 +1,90 @@
+{
+  "colorScheme": "dark",
+  "fonts": [
+    {
+      "family": "Noto Sans Hebrew",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#E4BB47",
+    "secondary": "#3B6994",
+    "accent": "#3A589D",
+    "background": "#0A0A0A",
+    "textPrimary": "#070D0D",
+    "link": "#3A589D"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Noto Sans Hebrew",
+      "heading": "Noto Sans Hebrew"
+    },
+    "fontStacks": {
+      "heading": [
+        "Noto Sans Hebrew",
+        "sans-serif"
+      ],
+      "body": [
+        "Noto Sans Hebrew",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Noto Sans Hebrew",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "43.52px",
+      "h2": "25.8px",
+      "body": "20.64px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "10px"
+  },
+  "components": {},
+  "images": {
+    "logo": "https://www.showerdoorsdesign.co.il/wp-content/uploads/2024/03/%D7%AA%D7%9E%D7%95%D7%A0%D7%94-%D7%A9%D7%9C-WhatsApp_-2024-03-12-%D7%91%D7%A9%D7%A2%D7%94-14.21-removebg-preview.png",
+    "favicon": "https://www.showerdoorsdesign.co.il/wp-content/uploads/2024/04/cropped-FAVICON-32x32.png",
+    "ogImage": "https://www.showerdoorsdesign.co.il/wp-content/uploads/2024/04/cropped-FAVICON.png",
+    "logoHref": "https://www.showerdoorsdesign.co.il/",
+    "logoAlt": "א.ש מקלחונים מעוצבים"
+  },
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Selected #0 because it is visible, medium-sized, located in the header, and links to the homepage. The alt text matches the brand name 'א.ש מקלחונים מעוצבים'.",
+    "confidence": 0.95,
+    "source": "llm"
+  },
+  "personality": {
+    "tone": "professional",
+    "energy": "medium",
+    "targetAudience": "homeowners looking for custom shower doors"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.5,
+    "colors": 0.9,
+    "overall": 0.7
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it is visible, medium-sized, located in the header, and links to the homepage. The alt text matches the brand name 'א.ש מקלחונים מעוצבים'.",
+        "confidence": 0.95
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": false,
+      "llmSucceeded": true
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Assistant } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
+import { appBranding } from "@/lib/branding";
 import "./globals.css";
 
 const assistant = Assistant({
@@ -9,8 +10,18 @@ const assistant = Assistant({
 });
 
 export const metadata: Metadata = {
-  title: "אלירן מקלחונים",
-  description: "דשבורד תפעול להזמנות, מלאי והתקנות",
+  title: appBranding.metadata.title,
+  description: appBranding.metadata.description,
+  icons: {
+    icon: appBranding.images.favicon,
+  },
+  openGraph: {
+    title: appBranding.metadata.title,
+    description: appBranding.metadata.description,
+    images: [appBranding.images.ogImage],
+    locale: "he_IL",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
