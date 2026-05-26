@@ -5,6 +5,7 @@ import {
 } from "@/lib/airtable/services/tasks";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { CreateStandaloneOrderFormClient } from "./CreateStandaloneOrderFormClient";
 import { OrdersTableClient } from "./OrdersTableClient";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default async function OrdersPage() {
   return (
     <div className="page page--wide">
       <PageHeader title="הזמנות" description="רשימת הזמנות וסטטוס טיפול." />
+      <CreateStandaloneOrderFormClient />
       <Card>
         <div className="table-wrap orders-table-wrapper">
           {orders.length > 0 ? (

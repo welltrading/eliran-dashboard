@@ -889,6 +889,13 @@ textarea {
   outline: 2px solid rgba(15, 118, 110, 0.14);
 }
 
+.filter-input--readonly {
+  align-items: center;
+  background: var(--background);
+  display: flex;
+  font-weight: 800;
+}
+
 .refresh-button {
   min-height: 38px;
   border: 1px solid var(--border);
