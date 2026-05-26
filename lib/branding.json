@@ -1,35 +1,42 @@
 {
-  "colorScheme": "dark",
+  "colorScheme": "light",
   "fonts": [
     {
-      "family": "Noto Sans Hebrew",
+      "family": "Heebo",
       "role": "body"
     }
   ],
   "colors": {
-    "primary": "#E4BB47",
-    "secondary": "#3B6994",
-    "accent": "#3A589D",
-    "background": "#0A0A0A",
-    "textPrimary": "#070D0D",
-    "link": "#3A589D"
+    "primary": "#000000",
+    "primaryHover": "#333333",
+    "accent": "#E8A020",
+    "background": "#FFFFFF",
+    "surface": "#FFFFFF",
+    "surfaceMuted": "#F5F5F5",
+    "textPrimary": "#1A1A1A",
+    "textMuted": "#5F5F5F",
+    "border": "#E0E0E0",
+    "link": "#000000"
   },
   "typography": {
     "fontFamilies": {
-      "primary": "Noto Sans Hebrew",
-      "heading": "Noto Sans Hebrew"
+      "primary": "Heebo",
+      "heading": "Heebo"
     },
     "fontStacks": {
       "heading": [
-        "Noto Sans Hebrew",
+        "Heebo",
+        "Assistant",
         "sans-serif"
       ],
       "body": [
-        "Noto Sans Hebrew",
+        "Heebo",
+        "Assistant",
         "sans-serif"
       ],
       "paragraph": [
-        "Noto Sans Hebrew",
+        "Heebo",
+        "Assistant",
         "sans-serif"
       ]
     },

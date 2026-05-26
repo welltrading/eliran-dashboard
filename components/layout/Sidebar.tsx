@@ -17,12 +17,12 @@ import { appBranding } from "@/lib/branding";
 
 const navItems = [
   { href: "/", label: "דשבורד", icon: Gauge },
-  { href: "/orders", label: "הזמנות", icon: ClipboardList },
   { href: "/quotes", label: "הצעות מחיר", icon: FileText },
+  { href: "/orders", label: "הזמנות", icon: ClipboardList },
+  { href: "/tasks", label: "משימות", icon: Hammer },
   { href: "/order-lines", label: "שורות הזמנה", icon: ListOrdered },
   { href: "/inventory", label: "מלאי לפי מיקום", icon: Warehouse },
   { href: "/inventory/movements", label: "תנועות מלאי", icon: Boxes },
-  { href: "/tasks", label: "משימות", icon: Hammer },
   { href: "/installers", label: "מתקינים", icon: PackageOpen },
   { href: "/customers", label: "לקוחות", icon: Users },
 ];
