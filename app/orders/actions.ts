@@ -2,7 +2,9 @@
 
 import {
   createStandaloneOrder,
+  updateCustomProduction,
   type CreateStandaloneOrderInput,
+  type UpdateCustomProductionInput,
 } from "@/lib/airtable/services/orders";
 import {
   createOrderTask,
@@ -15,4 +17,10 @@ export async function createStandaloneOrderAction(input: CreateStandaloneOrderIn
 
 export async function createOrderTaskAction(input: CreateOrderTaskInput) {
   return createOrderTask(input);
+}
+
+export async function updateCustomProductionAction(
+  input: UpdateCustomProductionInput,
+) {
+  return updateCustomProduction(input);
 }

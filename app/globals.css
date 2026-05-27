@@ -1603,9 +1603,71 @@ textarea {
   table-layout: auto;
 }
 
+.orders-filters {
+  margin-bottom: 12px;
+}
+
+.orders-table__type-cell {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
 .orders-table__invoice-cell {
   width: 560px;
   min-width: 560px;
+}
+
+.orders-table__production-row td {
+  white-space: normal;
+}
+
+.custom-production-panel {
+  min-width: 980px;
+}
+
+.custom-production-panel__grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.8fr) minmax(260px, 1.3fr) minmax(220px, 0.9fr) minmax(220px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.custom-production-panel__measurements textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.custom-production-panel__checks,
+.custom-production-panel__files {
+  display: grid;
+  gap: 8px;
+}
+
+.custom-production-panel__readonly,
+.custom-production-panel__files p {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  margin: 0;
+}
+
+.custom-production-panel__files div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.custom-production-panel__files a {
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
 }
 
 .order-payment-summary,

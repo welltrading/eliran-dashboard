@@ -3,8 +3,16 @@
 import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneText } from "@/components/ui/PhoneText";
-import type { Order, PaymentStage, TaskStatus } from "@/lib/types";
-import { createOrderTaskAction } from "./actions";
+import type {
+  CustomProductionStatus,
+  Order,
+  PaymentStage,
+  TaskStatus,
+} from "@/lib/types";
+import {
+  createOrderTaskAction,
+  updateCustomProductionAction,
+} from "./actions";
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 
 type TaskInstallerOption = {
@@ -23,6 +31,8 @@ type OrdersTableClientProps = {
   taskTypeOptions: TaskTypeOption[];
 };
 
+type ProductionFilter = "הכל" | "ייצור אישי" | "נשלח למפעל" | "מוכן במפעל";
+
 const assignmentTimeWindows = ["10-13", "13-16", "16-19"] as const;
 const taskStatusOptions: TaskStatus[] = [
   "פתוח",
@@ -31,6 +41,23 @@ const taskStatusOptions: TaskStatus[] = [
   "לביצוע",
   "בוצע",
   "בוטל",
+];
+const customProductionStatusOptions: CustomProductionStatus[] = [
+  "ממתין למדידה",
+  "מדידה תואמה",
+  "מדידה בוצעה",
+  "ממתין לשרטוטים",
+  "שרטוטים מוכנים",
+  "נשלח למפעל",
+  "מוכן במפעל",
+  "התקנה תואמה",
+  "הותקן",
+];
+const productionFilters: ProductionFilter[] = [
+  "הכל",
+  "ייצור אישי",
+  "נשלח למפעל",
+  "מוכן במפעל",
 ];
 
 function formatDate(value: string | null) {
@@ -73,6 +100,46 @@ function firstPaymentAmount(order: Order) {
     : order.advancePaymentAmount;
 }
 
+function isCustomProductionOrder(order: Order) {
+  return order.orderType === "ייצור אישי" || order.orderType === "מעורב";
+}
+
+function productionBadgeClass(order: Order) {
+  if (order.readyAtFactory || order.customProductionStatus === "הותקן") {
+    return "badge badge--success";
+  }
+
+  if (order.sentToFactory || order.customProductionStatus === "נשלח למפעל") {
+    return "badge badge--warning";
+  }
+
+  return "badge badge--muted";
+}
+
+function productionBadgeLabel(order: Order) {
+  if (!isCustomProductionOrder(order)) {
+    return null;
+  }
+
+  return order.customProductionStatus ?? "ייצור אישי";
+}
+
+function productionFilterMatches(order: Order, filter: ProductionFilter) {
+  if (filter === "הכל") {
+    return true;
+  }
+
+  if (filter === "ייצור אישי") {
+    return isCustomProductionOrder(order);
+  }
+
+  if (filter === "נשלח למפעל") {
+    return isCustomProductionOrder(order) && order.sentToFactory;
+  }
+
+  return isCustomProductionOrder(order) && order.readyAtFactory;
+}
+
 export function OrdersTableClient({
   orders,
   installerOptions,
@@ -80,8 +147,14 @@ export function OrdersTableClient({
 }: OrdersTableClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+  const [openTaskFormOrderId, setOpenTaskFormOrderId] = useState<string | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
+  const [productionSavingOrderId, setProductionSavingOrderId] = useState<
+    string | null
+  >(null);
+  const [productionFilter, setProductionFilter] =
+    useState<ProductionFilter>("הכל");
   const [feedback, setFeedback] = useState<{
     kind: "success" | "error";
     message: string;
@@ -92,7 +165,7 @@ export function OrdersTableClient({
       return;
     }
 
-    setOpenOrderId(null);
+    setOpenTaskFormOrderId(null);
     setFeedback(null);
   }
 
@@ -116,7 +189,7 @@ export function OrdersTableClient({
       });
 
       if (result.ok) {
-        setOpenOrderId(null);
+        setOpenTaskFormOrderId(null);
         setSavingOrderId(null);
         setFeedback({ kind: "success", message: result.message });
         router.refresh();
@@ -130,6 +203,43 @@ export function OrdersTableClient({
           .join(" "),
       });
       setSavingOrderId(null);
+    });
+  }
+
+  function handleUpdateCustomProduction(order: Order, formData: FormData) {
+    if (isPending) {
+      return;
+    }
+
+    setFeedback(null);
+    setProductionSavingOrderId(order.id);
+
+    startTransition(async () => {
+      const result = await updateCustomProductionAction({
+        orderId: order.id,
+        customProductionStatus:
+          (String(formData.get("customProductionStatus") ?? "") ||
+            null) as CustomProductionStatus | null,
+        finalProductionMeasurements:
+          String(formData.get("finalProductionMeasurements") ?? "") || null,
+        sentToFactory: formData.get("sentToFactory") === "on",
+        readyAtFactory: formData.get("readyAtFactory") === "on",
+      });
+
+      if (result.ok) {
+        setProductionSavingOrderId(null);
+        setFeedback({ kind: "success", message: result.message });
+        router.refresh();
+        return;
+      }
+
+      setFeedback({
+        kind: "error",
+        message: [result.message, ...(result.errors ?? [])]
+          .filter(Boolean)
+          .join(" "),
+      });
+      setProductionSavingOrderId(null);
     });
   }
 
@@ -267,6 +377,151 @@ export function OrdersTableClient({
     );
   };
 
+  const renderCustomProductionDetails = (order: Order) => {
+    const isSavingCurrentOrder = productionSavingOrderId === order.id;
+
+    return (
+      <tr className="tasks-table__assignment-row orders-table__production-row">
+        <td colSpan={12}>
+          <div className="custom-production-panel">
+            <form
+              className="task-assignment-editor"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleUpdateCustomProduction(
+                  order,
+                  new FormData(event.currentTarget),
+                );
+              }}
+            >
+              <div className="task-assignment-editor__heading">
+                <div>
+                  <strong>ייצור אישי</strong>
+                  <span>
+                    {order.orderNumber || order.id} · {order.customerName || "לקוח ללא שם"}
+                  </span>
+                </div>
+                <div className="task-row-actions">
+                  <button
+                    className="task-row-actions__secondary"
+                    type="button"
+                    disabled={isSavingCurrentOrder}
+                    onClick={() => {
+                      setFeedback(null);
+                      setOpenTaskFormOrderId((current) =>
+                        current === order.id ? null : order.id,
+                      );
+                    }}
+                  >
+                    צור משימה להזמנה
+                  </button>
+                  <a
+                    className="task-row-actions__secondary"
+                    href={`/tasks?orderId=${encodeURIComponent(order.id)}`}
+                  >
+                    פתח משימות
+                  </a>
+                </div>
+              </div>
+
+              <div className="custom-production-panel__grid">
+                <label className="filter-field">
+                  <span className="filter-label">סטטוס ייצור אישי</span>
+                  <select
+                    className="filter-select"
+                    name="customProductionStatus"
+                    defaultValue={order.customProductionStatus ?? ""}
+                    disabled={isSavingCurrentOrder}
+                  >
+                    <option value="">ללא סטטוס</option>
+                    {customProductionStatusOptions.map((statusOption) => (
+                      <option value={statusOption} key={statusOption}>
+                        {statusOption}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="filter-field custom-production-panel__measurements">
+                  <span className="filter-label">מידות סופיות לייצור</span>
+                  <textarea
+                    className="filter-input"
+                    name="finalProductionMeasurements"
+                    rows={4}
+                    defaultValue={order.finalProductionMeasurements ?? ""}
+                    disabled={isSavingCurrentOrder}
+                  />
+                </label>
+
+                <div className="custom-production-panel__checks">
+                  <label className="checkbox-field">
+                    <input
+                      name="sentToFactory"
+                      type="checkbox"
+                      defaultChecked={order.sentToFactory}
+                      disabled={isSavingCurrentOrder}
+                    />
+                    <span>נשלח למפעל</span>
+                  </label>
+                  <span className="custom-production-panel__readonly">
+                    תאריך שליחה: {formatDate(order.sentToFactoryDate)}
+                  </span>
+
+                  <label className="checkbox-field">
+                    <input
+                      name="readyAtFactory"
+                      type="checkbox"
+                      defaultChecked={order.readyAtFactory}
+                      disabled={isSavingCurrentOrder}
+                    />
+                    <span>מוכן במפעל</span>
+                  </label>
+                  <span className="custom-production-panel__readonly">
+                    תאריך מוכן: {formatDate(order.readyAtFactoryDate)}
+                  </span>
+                </div>
+
+                <div className="custom-production-panel__files">
+                  <span className="filter-label">שרטוטים למפעל</span>
+                  {order.factoryDrawings.length > 0 ? (
+                    <div>
+                      {order.factoryDrawings.map((attachment) => (
+                        <a
+                          href={attachment.url}
+                          key={attachment.id}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {attachment.filename}
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>אין שרטוטים מצורפים.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="task-assignment-editor__actions">
+                <button
+                  className="primary-action"
+                  type="submit"
+                  disabled={isSavingCurrentOrder}
+                >
+                  {isSavingCurrentOrder ? "שומר..." : "שמור ייצור אישי"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  const filteredOrders = orders.filter((order) =>
+    productionFilterMatches(order, productionFilter),
+  );
+
   return (
     <>
       {feedback ? (
@@ -280,6 +535,28 @@ export function OrdersTableClient({
           {feedback.message}
         </div>
       ) : null}
+
+      <div className="filters-bar orders-filters" aria-label="סינון הזמנות">
+        <label className="filter-field">
+          <span className="filter-label">View</span>
+          <select
+            className="filter-select"
+            value={productionFilter}
+            onChange={(event) =>
+              setProductionFilter(event.target.value as ProductionFilter)
+            }
+          >
+            {productionFilters.map((filter) => (
+              <option value={filter} key={filter}>
+                {filter}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="table-summary">
+          מציג {filteredOrders.length} מתוך {orders.length}
+        </p>
+      </div>
 
       <table className="data-table orders-table">
         <thead>
@@ -299,10 +576,11 @@ export function OrdersTableClient({
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => {
+          {filteredOrders.map((order) => {
             const initialPaymentStage = firstPaymentStage(order);
             const showFinalInvoice = initialPaymentStage === "advance_60";
             const linkedTaskCount = order.taskIds.length;
+            const productionLabel = productionBadgeLabel(order);
 
             return (
             <Fragment key={order.id}>
@@ -322,6 +600,21 @@ export function OrdersTableClient({
                             ? "כבר קיימת משימה"
                             : `קיימות ${linkedTaskCount} משימות`}
                         </span>
+                        {isCustomProductionOrder(order) ? (
+                          <button
+                            className="task-row-actions__secondary"
+                            type="button"
+                            onClick={() => {
+                              setFeedback(null);
+                              setOpenTaskFormOrderId((current) =>
+                                current === order.id ? null : order.id,
+                              );
+                            }}
+                            disabled={isPending && savingOrderId !== order.id}
+                          >
+                            צור משימה נוספת
+                          </button>
+                        ) : null}
                       </>
                     ) : (
                       <button
@@ -329,7 +622,7 @@ export function OrdersTableClient({
                         type="button"
                         onClick={() => {
                           setFeedback(null);
-                          setOpenOrderId((current) =>
+                          setOpenTaskFormOrderId((current) =>
                             current === order.id ? null : order.id,
                           );
                         }}
@@ -338,12 +631,35 @@ export function OrdersTableClient({
                         צור משימה להזמנה
                       </button>
                     )}
+                    {isCustomProductionOrder(order) ? (
+                      <button
+                        className="task-row-actions__secondary"
+                        type="button"
+                        onClick={() => {
+                          setFeedback(null);
+                          setExpandedOrderId((current) =>
+                            current === order.id ? null : order.id,
+                          );
+                        }}
+                      >
+                        ייצור אישי
+                      </button>
+                    ) : null}
                   </div>
                 </td>
                 <td>{order.orderNumber || "-"}</td>
                 <td>{order.customerName || "-"}</td>
                 <td><PhoneText value={order.phone} /></td>
-                <td>{order.orderType}</td>
+                <td>
+                  <div className="orders-table__type-cell">
+                    <span>{order.orderType}</span>
+                    {productionLabel ? (
+                      <span className={productionBadgeClass(order)}>
+                        {productionLabel}
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td>
                   {order.productDescription ? (
                     <div style={{ whiteSpace: "pre-line" }}>{order.productDescription}</div>
@@ -432,7 +748,10 @@ export function OrdersTableClient({
                   </div>
                 </td>
               </tr>
-              {openOrderId === order.id && linkedTaskCount === 0
+              {expandedOrderId === order.id && isCustomProductionOrder(order)
+                ? renderCustomProductionDetails(order)
+                : null}
+              {openTaskFormOrderId === order.id
                 ? renderTaskForm(order)
                 : null}
             </Fragment>

@@ -1,10 +1,14 @@
 import "server-only";
-import type { OrderStatus, OrderType } from "@/lib/types";
+import type {
+  CustomProductionStatus,
+  OrderStatus,
+  OrderType,
+} from "@/lib/types";
 import { selectRecords } from "../client";
 import { mapOrder } from "../mappers/orders";
 import type { RawOrderFields } from "../raw-types";
 import { airtableTables } from "../tables";
-import { createRecord } from "../write-client";
+import { createRecord, updateRecord } from "../write-client";
 
 export type CreateStandaloneOrderInput = {
   customerName: string;
@@ -26,6 +30,14 @@ export type CreateStandaloneOrderInput = {
   paymentMethod: string | null;
   paymentApproved: boolean;
   notes: string | null;
+};
+
+export type UpdateCustomProductionInput = {
+  orderId: string;
+  customProductionStatus: CustomProductionStatus | null;
+  finalProductionMeasurements: string | null;
+  sentToFactory: boolean;
+  readyAtFactory: boolean;
 };
 
 type CreatedOrderFields = {
@@ -51,6 +63,13 @@ type CreatedOrderFields = {
   fldPBnhKedXDftVBJ?: string;
   fldUealfvxq803w4h?: string;
   fldBvprcQWNtsC6jt?: boolean;
+};
+
+type UpdatedCustomProductionFields = {
+  fldeKIQJg3CYLFLoS?: CustomProductionStatus | null;
+  fldt9k7oNeFWYX37V?: string | null;
+  fld5p9BH4axVPzKwV?: boolean;
+  fldtpYU0EOhDmLiD8?: boolean;
 };
 
 const orderTypes: OrderType[] = ["סטנדרטי", "ייצור אישי"];
@@ -84,6 +103,17 @@ const glassTypes = [
 const hardwareColors = ["גרפיט", "לבן", "ניקל", "שחור", "זהב"];
 const paymentMethods = ["העברה בנקאית", "אשראי", "מזומן", "ביט", "פייבוקס"];
 const paymentModes = ["מקדמה 60%", "תשלום מלא"];
+const customProductionStatuses: CustomProductionStatus[] = [
+  "ממתין למדידה",
+  "מדידה תואמה",
+  "מדידה בוצעה",
+  "ממתין לשרטוטים",
+  "שרטוטים מוכנים",
+  "נשלח למפעל",
+  "מוכן במפעל",
+  "התקנה תואמה",
+  "הותקן",
+];
 
 function numericValue(value: string) {
   const parsed = Number(value);
@@ -368,6 +398,57 @@ export async function createStandaloneOrder(input: CreateStandaloneOrderInput) {
       ok: false as const,
       message: "יצירת ההזמנה נכשלה.",
       errors: [error instanceof Error ? error.message : "שגיאה לא ידועה."],
+    };
+  }
+}
+
+export async function updateCustomProduction(input: UpdateCustomProductionInput) {
+  const orderId = input.orderId.trim();
+  const finalProductionMeasurements =
+    normalizedText(input.finalProductionMeasurements) || null;
+  const customProductionStatus = input.customProductionStatus;
+  const errors: string[] = [];
+
+  if (!/^rec[A-Za-z0-9]{14}$/.test(orderId)) {
+    errors.push("חסר מזהה הזמנה תקין.");
+  }
+
+  if (
+    customProductionStatus &&
+    !customProductionStatuses.includes(customProductionStatus)
+  ) {
+    errors.push("סטטוס ייצור אישי אינו תקין.");
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false as const,
+      message: "יש לתקן את השדות לפני שמירת הייצור האישי.",
+      errors,
+    };
+  }
+
+  try {
+    await updateRecord<UpdatedCustomProductionFields>(airtableTables.orders, orderId, {
+      fldeKIQJg3CYLFLoS: customProductionStatus,
+      fldt9k7oNeFWYX37V: finalProductionMeasurements,
+      fld5p9BH4axVPzKwV: input.sentToFactory === true,
+      fldtpYU0EOhDmLiD8: input.readyAtFactory === true,
+    });
+
+    return {
+      ok: true as const,
+      message: "פרטי הייצור האישי נשמרו בהצלחה.",
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: "עדכון הייצור האישי ב-Airtable נכשל.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת עדכון הייצור האישי.",
+      ],
     };
   }
 }

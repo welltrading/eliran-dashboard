@@ -2,6 +2,12 @@ import "server-only";
 
 export type AirtableLinkedRecord = string[];
 
+export type AirtableAttachment = {
+  id?: unknown;
+  filename?: unknown;
+  url?: unknown;
+};
+
 export type RawCustomerFields = {
   "שם לקוח"?: string;
   טלפון?: string;
@@ -109,6 +115,13 @@ export type RawOrderFields = {
   fldOwFIxHHujvMTfw?: unknown;
   fldtE1r6tMMj28HNF?: unknown;
   fldT6fSDKdVbhcPmw?: unknown;
+  fldeKIQJg3CYLFLoS?: unknown;
+  fldt9k7oNeFWYX37V?: unknown;
+  fldgWWu4EYvJXQuHC?: unknown;
+  fld5p9BH4axVPzKwV?: unknown;
+  fldyJ3cRvlR9VTEWh?: unknown;
+  fldtpYU0EOhDmLiD8?: unknown;
+  fldwyz5aHZ4KJtJ43?: unknown;
 };
 
 export type RawOrderLineFields = {

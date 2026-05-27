@@ -1,5 +1,10 @@
 import "server-only";
-import type { Order, OrderType } from "@/lib/types";
+import type {
+  AirtableAttachment,
+  CustomProductionStatus,
+  Order,
+  OrderType,
+} from "@/lib/types";
 import type { RawOrderFields } from "../raw-types";
 import { numberValue } from "./shared";
 
@@ -53,11 +58,55 @@ function urlValue(value: unknown) {
 
 function orderTypeValue(value: unknown): OrderType {
   const normalized = textValue(value);
-  return normalized === "ייצור אישי" ? "ייצור אישי" : "סטנדרטי";
+  if (normalized === "ייצור אישי" || normalized === "מעורב") {
+    return normalized;
+  }
+
+  return "סטנדרטי";
 }
 
 function booleanValue(value: unknown) {
   return value === true;
+}
+
+const customProductionStatuses: CustomProductionStatus[] = [
+  "ממתין למדידה",
+  "מדידה תואמה",
+  "מדידה בוצעה",
+  "ממתין לשרטוטים",
+  "שרטוטים מוכנים",
+  "נשלח למפעל",
+  "מוכן במפעל",
+  "התקנה תואמה",
+  "הותקן",
+];
+
+function customProductionStatusValue(value: unknown) {
+  const normalized = textValue(value);
+  return customProductionStatuses.includes(normalized as CustomProductionStatus)
+    ? (normalized as CustomProductionStatus)
+    : null;
+}
+
+function attachmentValue(value: unknown): AirtableAttachment[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+
+    const id = "id" in item && typeof item.id === "string" ? item.id : "";
+    const filename =
+      "filename" in item && typeof item.filename === "string"
+        ? item.filename.trim()
+        : "";
+    const url = "url" in item && typeof item.url === "string" ? item.url.trim() : "";
+
+    return id && filename && url ? [{ id, filename, url }] : [];
+  });
 }
 
 function linkedRecordIds(value: unknown) {
@@ -99,5 +148,14 @@ export function mapOrder(record: RawRecord): Order {
     taskIds: linkedRecordIds(record.fields.fldEZ175gAwbH7vge),
     sendStatus: easyCountStatus,
     productDescription: nullableTextValue(record.fields.fldvuJBwo3Qb4ub7p),
+    customProductionStatus: customProductionStatusValue(
+      record.fields.fldeKIQJg3CYLFLoS,
+    ),
+    finalProductionMeasurements: nullableTextValue(record.fields.fldt9k7oNeFWYX37V),
+    factoryDrawings: attachmentValue(record.fields.fldgWWu4EYvJXQuHC),
+    sentToFactory: booleanValue(record.fields.fld5p9BH4axVPzKwV),
+    sentToFactoryDate: nullableTextValue(record.fields.fldyJ3cRvlR9VTEWh),
+    readyAtFactory: booleanValue(record.fields.fldtpYU0EOhDmLiD8),
+    readyAtFactoryDate: nullableTextValue(record.fields.fldwyz5aHZ4KJtJ43),
   };
 }

@@ -18,7 +18,18 @@ export type StockStatus = "ok" | "low" | "out" | "negative";
 
 export type QuoteType = "סטנדרטי" | "ייצור אישי";
 
-export type OrderType = "סטנדרטי" | "ייצור אישי";
+export type OrderType = "סטנדרטי" | "ייצור אישי" | "מעורב";
+
+export type CustomProductionStatus =
+  | "ממתין למדידה"
+  | "מדידה תואמה"
+  | "מדידה בוצעה"
+  | "ממתין לשרטוטים"
+  | "שרטוטים מוכנים"
+  | "נשלח למפעל"
+  | "מוכן במפעל"
+  | "התקנה תואמה"
+  | "הותקן";
 
 export type PaymentStage = "advance_60" | "full_payment" | "final_40";
 
@@ -231,6 +242,19 @@ export type Order = {
   taskIds: string[];
   sendStatus: string | null;
   productDescription: string | null;
+  customProductionStatus: CustomProductionStatus | null;
+  finalProductionMeasurements: string | null;
+  factoryDrawings: AirtableAttachment[];
+  sentToFactory: boolean;
+  sentToFactoryDate: string | null;
+  readyAtFactory: boolean;
+  readyAtFactoryDate: string | null;
+};
+
+export type AirtableAttachment = {
+  id: string;
+  filename: string;
+  url: string;
 };
 
 export type OrderLine = {
