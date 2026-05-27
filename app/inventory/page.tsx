@@ -3,23 +3,78 @@ import {
   buildInventoryValidation,
   getInventoryByLocation,
 } from "@/lib/airtable/services/inventory";
+import { getProducts } from "@/lib/airtable/services/products";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { InventoryTableClient, type InventoryTableItem } from "./InventoryTableClient";
+import {
+  InventoryTableClient,
+  type InventoryLocationSummary,
+  type InventoryProductOption,
+  type InventoryTableItem,
+} from "./InventoryTableClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function InventoryPage() {
-  const [items, movements] = await Promise.all([getInventoryByLocation(), getInventoryMovements()]);
+  const [items, movements, products] = await Promise.all([
+    getInventoryByLocation(),
+    getInventoryMovements(),
+    getProducts(),
+  ]);
   const validation = buildInventoryValidation(items, movements);
   const tableItems: InventoryTableItem[] = items.map((item) => ({
+    id: item.id,
     productName: item.productName,
     productSku: item.productSku,
+    productRecordId: item.productRecordId,
     location: item.location,
     availableQuantity: item.availableQuantity,
     status: item.status,
     displayForMoran: item.displayForMoran,
   }));
+  const productOptions: InventoryProductOption[] = products
+    .map((product) => ({
+      id: product.id,
+      label: product.selectLabel,
+      model: product.baseModel,
+      stockDisplay: product.stockDisplay,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, "he"));
+  const locationSummaryByName = new Map<string, InventoryLocationSummary>();
+
+  items.forEach((item) => {
+    const location = item.location || "ללא מיקום";
+    const current = locationSummaryByName.get(location) ?? {
+      location,
+      totalQuantity: 0,
+      itemCount: 0,
+      lowCount: 0,
+      outCount: 0,
+      negativeCount: 0,
+    };
+
+    current.totalQuantity += item.availableQuantity;
+    current.itemCount += 1;
+
+    if (item.status === "low") {
+      current.lowCount += 1;
+    }
+
+    if (item.status === "out") {
+      current.outCount += 1;
+    }
+
+    if (item.status === "negative") {
+      current.negativeCount += 1;
+    }
+
+    locationSummaryByName.set(location, current);
+  });
+
+  const locationSummaries = Array.from(locationSummaryByName.values()).sort((a, b) =>
+    a.location.localeCompare(b.location, "he"),
+  );
+  const locations = locationSummaries.map((summary) => summary.location).filter(Boolean);
   const statusCounts = {
     ok: items.filter((item) => item.status === "ok").length,
     low: validation.inventoryLowCount,
@@ -30,13 +85,23 @@ export default async function InventoryPage() {
 
   return (
     <div className="page page--wide">
-      <PageHeader title="מלאי לפי מיקום" description="כמויות זמינות לפי מחסן, רכב או אתר." />
+      <PageHeader
+        title="ניהול מלאי"
+        description="דגמים, מיקומים, חריגות ועדכוני כניסה ויציאה מהמלאי."
+      />
       <div className="grid stats-grid inventory-summary">
         <Card>
           <div className="card__body stat-card">
             <p className="stat-card__label">סה"כ רשומות מלאי</p>
             <p className="stat-card__value">{items.length}</p>
-            <p className="stat-card__note">קריאה בלבד מ-Airtable</p>
+            <p className="stat-card__note">לפי מוצר ומיקום</p>
+          </div>
+        </Card>
+        <Card>
+          <div className="card__body stat-card">
+            <p className="stat-card__label">מיקומים פעילים</p>
+            <p className="stat-card__value">{locationSummaries.length}</p>
+            <p className="stat-card__note">מחסן, חנות, רכב או אתר</p>
           </div>
         </Card>
         <Card>
@@ -48,29 +113,24 @@ export default async function InventoryPage() {
         </Card>
         <Card>
           <div className="card__body stat-card">
-            <p className="stat-card__label">מלאי נמוך</p>
-            <p className="stat-card__value">{statusCounts.low}</p>
-            <p className="stat-card__note">כמות 1 עד 3</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="card__body stat-card">
-            <p className="stat-card__label">אזל</p>
-            <p className="stat-card__value">{statusCounts.out}</p>
-            <p className="stat-card__note">כמות 0</p>
+            <p className="stat-card__label">מלאי נמוך / אזל</p>
+            <p className="stat-card__value">{statusCounts.low + statusCounts.out}</p>
+            <p className="stat-card__note">
+              נמוך {statusCounts.low} | אזל {statusCounts.out}
+            </p>
           </div>
         </Card>
         <Card className="validation-card validation-card--danger">
           <div className="card__body stat-card">
             <p className="stat-card__label">מלאי שלילי</p>
             <p className="stat-card__value">{statusCounts.negative}</p>
-            <p className="stat-card__note">מלאי שלילי: {statusCounts.negative}</p>
+            <p className="stat-card__note">דורש בדיקה לפני מכירה</p>
           </div>
         </Card>
       </div>
       <Card className="validation-card">
         <div className="card__body validation-list">
-          <h2>Validation</h2>
+          <h2>בדיקות תקינות</h2>
           <div className="validation-grid">
             <span>מלאי שלילי: {validation.inventoryNegativeCount}</span>
             <span>אזל: {validation.inventoryOutCount}</span>
@@ -106,7 +166,12 @@ export default async function InventoryPage() {
         </Card>
       ) : null}
       <Card>
-        <InventoryTableClient items={tableItems} />
+        <InventoryTableClient
+          items={tableItems}
+          locations={locations}
+          locationSummaries={locationSummaries}
+          productOptions={productOptions}
+        />
       </Card>
     </div>
   );
