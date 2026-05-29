@@ -104,26 +104,6 @@ function isCustomProductionOrder(order: Order) {
   return order.orderType === "ייצור אישי" || order.orderType === "מעורב";
 }
 
-function productionBadgeClass(order: Order) {
-  if (order.readyAtFactory || order.customProductionStatus === "הותקן") {
-    return "badge badge--success";
-  }
-
-  if (order.sentToFactory || order.customProductionStatus === "נשלח למפעל") {
-    return "badge badge--warning";
-  }
-
-  return "badge badge--muted";
-}
-
-function productionBadgeLabel(order: Order) {
-  if (!isCustomProductionOrder(order)) {
-    return null;
-  }
-
-  return order.customProductionStatus ?? "ייצור אישי";
-}
-
 function productionFilterMatches(order: Order, filter: ProductionFilter) {
   if (filter === "הכל") {
     return true;
@@ -248,7 +228,7 @@ export function OrdersTableClient({
 
     return (
       <tr className="tasks-table__assignment-row">
-        <td colSpan={12}>
+        <td colSpan={11}>
           <form
             className="task-assignment-editor"
             onSubmit={(event) => {
@@ -382,7 +362,7 @@ export function OrdersTableClient({
 
     return (
       <tr className="tasks-table__assignment-row orders-table__production-row">
-        <td colSpan={12}>
+        <td colSpan={11}>
           <div className="custom-production-panel">
             <form
               className="task-assignment-editor"
@@ -396,93 +376,88 @@ export function OrdersTableClient({
             >
               <div className="task-assignment-editor__heading">
                 <div>
-                  <strong>ייצור אישי</strong>
+                  <strong>
+                    עדכון ייצור אישי להזמנה {order.orderNumber || order.id}
+                  </strong>
                   <span>
-                    {order.orderNumber || order.id} · {order.customerName || "לקוח ללא שם"}
+                    {order.customerName || "לקוח ללא שם"}
                   </span>
-                </div>
-                <div className="task-row-actions">
-                  <button
-                    className="task-row-actions__secondary"
-                    type="button"
-                    disabled={isSavingCurrentOrder}
-                    onClick={() => {
-                      setFeedback(null);
-                      setOpenTaskFormOrderId((current) =>
-                        current === order.id ? null : order.id,
-                      );
-                    }}
-                  >
-                    צור משימה להזמנה
-                  </button>
-                  <a
-                    className="task-row-actions__secondary"
-                    href={`/tasks?orderId=${encodeURIComponent(order.id)}`}
-                  >
-                    פתח משימות
-                  </a>
                 </div>
               </div>
 
               <div className="custom-production-panel__grid">
-                <label className="filter-field">
-                  <span className="filter-label">סטטוס ייצור אישי</span>
-                  <select
-                    className="filter-select"
-                    name="customProductionStatus"
-                    defaultValue={order.customProductionStatus ?? ""}
-                    disabled={isSavingCurrentOrder}
-                  >
-                    <option value="">ללא סטטוס</option>
-                    {customProductionStatusOptions.map((statusOption) => (
-                      <option value={statusOption} key={statusOption}>
-                        {statusOption}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <section className="custom-production-panel__section custom-production-panel__status">
+                  <h3>סטטוס ייצור</h3>
+                  <label className="filter-field">
+                    <span className="filter-label">סטטוס ייצור אישי</span>
+                    <select
+                      className="filter-select"
+                      name="customProductionStatus"
+                      defaultValue={order.customProductionStatus ?? ""}
+                      disabled={isSavingCurrentOrder}
+                    >
+                      <option value="">ללא סטטוס</option>
+                      {customProductionStatusOptions.map((statusOption) => (
+                        <option value={statusOption} key={statusOption}>
+                          {statusOption}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </section>
 
-                <label className="filter-field custom-production-panel__measurements">
-                  <span className="filter-label">מידות סופיות לייצור</span>
-                  <textarea
-                    className="filter-input"
-                    name="finalProductionMeasurements"
-                    rows={4}
-                    defaultValue={order.finalProductionMeasurements ?? ""}
-                    disabled={isSavingCurrentOrder}
-                  />
-                </label>
-
-                <div className="custom-production-panel__checks">
-                  <label className="checkbox-field">
-                    <input
-                      name="sentToFactory"
-                      type="checkbox"
-                      defaultChecked={order.sentToFactory}
+                <section className="custom-production-panel__section custom-production-panel__measurements">
+                  <h3>מידות סופיות לייצור</h3>
+                  <label className="filter-field">
+                    <span className="filter-label">מידות סופיות לייצור</span>
+                    <textarea
+                      className="filter-input"
+                      name="finalProductionMeasurements"
+                      rows={4}
+                      defaultValue={order.finalProductionMeasurements ?? ""}
                       disabled={isSavingCurrentOrder}
                     />
-                    <span>נשלח למפעל</span>
                   </label>
-                  <span className="custom-production-panel__readonly">
-                    תאריך שליחה: {formatDate(order.sentToFactoryDate)}
-                  </span>
+                </section>
 
-                  <label className="checkbox-field">
-                    <input
-                      name="readyAtFactory"
-                      type="checkbox"
-                      defaultChecked={order.readyAtFactory}
-                      disabled={isSavingCurrentOrder}
-                    />
-                    <span>מוכן במפעל</span>
-                  </label>
-                  <span className="custom-production-panel__readonly">
-                    תאריך מוכן: {formatDate(order.readyAtFactoryDate)}
-                  </span>
-                </div>
+                <section className="custom-production-panel__section custom-production-panel__factory">
+                  <h3>מפעל</h3>
+                  <div className="custom-production-panel__factory-row">
+                    <label className="checkbox-field">
+                      <input
+                        name="sentToFactory"
+                        type="checkbox"
+                        defaultChecked={order.sentToFactory}
+                        disabled={isSavingCurrentOrder}
+                      />
+                      <span>נשלח למפעל</span>
+                    </label>
+                    <span className="custom-production-panel__readonly">
+                      תאריך שליחה: {formatDate(order.sentToFactoryDate)}
+                    </span>
+                  </div>
 
-                <div className="custom-production-panel__files">
-                  <span className="filter-label">שרטוטים למפעל</span>
+                  <div className="custom-production-panel__factory-row">
+                    <label className="checkbox-field">
+                      <input
+                        name="readyAtFactory"
+                        type="checkbox"
+                        defaultChecked={order.readyAtFactory}
+                        disabled={isSavingCurrentOrder}
+                      />
+                      <span>מוכן במפעל</span>
+                    </label>
+                    <span className="custom-production-panel__readonly">
+                      תאריך מוכן: {formatDate(order.readyAtFactoryDate)}
+                    </span>
+                  </div>
+                </section>
+
+                <section className="custom-production-panel__files">
+                  <div className="custom-production-panel__files-heading">
+                    <h3>שרטוטים למפעל</h3>
+                    <span>קישורים קיימים בלבד</span>
+                  </div>
                   {order.factoryDrawings.length > 0 ? (
                     <div>
                       {order.factoryDrawings.map((attachment) => (
@@ -499,7 +474,7 @@ export function OrdersTableClient({
                   ) : (
                     <p>אין שרטוטים מצורפים.</p>
                   )}
-                </div>
+                </section>
               </div>
 
               <div className="task-assignment-editor__actions">
@@ -508,8 +483,11 @@ export function OrdersTableClient({
                   type="submit"
                   disabled={isSavingCurrentOrder}
                 >
-                  {isSavingCurrentOrder ? "שומר..." : "שמור ייצור אישי"}
+                  {isSavingCurrentOrder ? "שומר..." : "שמור שינויים"}
                 </button>
+                <span className="custom-production-panel__save-note">
+                  השינויים נשמרים במערכת לאחר לחיצה על שמירה
+                </span>
               </div>
             </form>
           </div>
@@ -561,7 +539,6 @@ export function OrdersTableClient({
       <table className="data-table orders-table">
         <thead>
           <tr>
-            <th>פעולה</th>
             <th>מספר הזמנה</th>
             <th>שם לקוח</th>
             <th>טלפון</th>
@@ -580,57 +557,53 @@ export function OrdersTableClient({
             const initialPaymentStage = firstPaymentStage(order);
             const showFinalInvoice = initialPaymentStage === "advance_60";
             const linkedTaskCount = order.taskIds.length;
-            const productionLabel = productionBadgeLabel(order);
+            const taskIndicator =
+              linkedTaskCount > 0
+                ? `משימות פתוחות: ${linkedTaskCount}`
+                : "אין משימות פתוחות";
 
             return (
             <Fragment key={order.id}>
               <tr>
+                <td>{order.orderNumber || "-"}</td>
+                <td>{order.customerName || "-"}</td>
+                <td><PhoneText value={order.phone} /></td>
                 <td>
-                  <div className="task-row-actions">
-                    {linkedTaskCount > 0 ? (
-                      <>
-                        <a
-                          className="task-row-actions__secondary"
-                          href={`/tasks?orderId=${encodeURIComponent(order.id)}`}
-                        >
-                          {linkedTaskCount === 1 ? "פתח משימה" : "פתח משימות"}
-                        </a>
-                        <span className="badge badge--success">
-                          {linkedTaskCount === 1
-                            ? "כבר קיימת משימה"
-                            : `קיימות ${linkedTaskCount} משימות`}
-                        </span>
-                        {isCustomProductionOrder(order) ? (
-                          <button
-                            className="task-row-actions__secondary"
-                            type="button"
-                            onClick={() => {
-                              setFeedback(null);
-                              setOpenTaskFormOrderId((current) =>
-                                current === order.id ? null : order.id,
-                              );
-                            }}
-                            disabled={isPending && savingOrderId !== order.id}
-                          >
-                            צור משימה נוספת
-                          </button>
-                        ) : null}
-                      </>
+                  <div className="orders-table__type-cell">
+                    <span>{order.orderType}</span>
+                  </div>
+                </td>
+                <td className="orders-table__description-cell">
+                  <div className="orders-table__description-content">
+                    {order.productDescription ? (
+                      <div style={{ whiteSpace: "pre-line" }}>{order.productDescription}</div>
                     ) : (
-                      <button
-                        className="task-row-actions__secondary"
-                        type="button"
-                        onClick={() => {
-                          setFeedback(null);
-                          setOpenTaskFormOrderId((current) =>
-                            current === order.id ? null : order.id,
-                          );
-                        }}
-                        disabled={isPending && savingOrderId !== order.id}
-                      >
-                        צור משימה להזמנה
-                      </button>
+                      "-"
                     )}
+                  </div>
+                  <div className="orders-table__row-actions">
+                    <span
+                      className={`orders-table__task-indicator${
+                        linkedTaskCount > 0
+                          ? " orders-table__task-indicator--active"
+                          : ""
+                      }`}
+                    >
+                      {taskIndicator}
+                    </span>
+                    <button
+                      className="task-row-actions__secondary"
+                      type="button"
+                      onClick={() => {
+                        setFeedback(null);
+                        setOpenTaskFormOrderId((current) =>
+                          current === order.id ? null : order.id,
+                        );
+                      }}
+                      disabled={isPending && savingOrderId !== order.id}
+                    >
+                      הוסף משימה להזמנה
+                    </button>
                     {isCustomProductionOrder(order) ? (
                       <button
                         className="task-row-actions__secondary"
@@ -641,31 +614,17 @@ export function OrdersTableClient({
                             current === order.id ? null : order.id,
                           );
                         }}
+                        aria-expanded={expandedOrderId === order.id}
+                        title={
+                          expandedOrderId === order.id
+                            ? "סגור פאנל עדכון ייצור אישי"
+                            : "פתח פאנל עדכון ייצור אישי"
+                        }
                       >
-                        ייצור אישי
+                        עדכון ייצור אישי
                       </button>
                     ) : null}
                   </div>
-                </td>
-                <td>{order.orderNumber || "-"}</td>
-                <td>{order.customerName || "-"}</td>
-                <td><PhoneText value={order.phone} /></td>
-                <td>
-                  <div className="orders-table__type-cell">
-                    <span>{order.orderType}</span>
-                    {productionLabel ? (
-                      <span className={productionBadgeClass(order)}>
-                        {productionLabel}
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td>
-                  {order.productDescription ? (
-                    <div style={{ whiteSpace: "pre-line" }}>{order.productDescription}</div>
-                  ) : (
-                    "-"
-                  )}
                 </td>
                 <td>{order.status || "-"}</td>
                 <td>{formatDate(order.createdAt)}</td>
