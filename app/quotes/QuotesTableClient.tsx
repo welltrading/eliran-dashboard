@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { PhoneText } from "@/components/ui/PhoneText";
 import type { Product, Quote, QuoteType } from "@/lib/types";
 import { createQuoteAction } from "./actions";
@@ -63,7 +63,6 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
     kind: "success" | "error";
     message: string;
   } | null>(null);
-  const [isRefreshing, startRefresh] = useTransition();
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
 
   const filteredQuotes = useMemo(() => {
@@ -538,14 +537,6 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
           מציג {filteredQuotes.length} מתוך {quotes.length}
         </p>
 
-        <button
-          className="refresh-button"
-          type="button"
-          onClick={() => startRefresh(() => router.refresh())}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? "מרענן..." : "רענון נתונים"}
-        </button>
       </div>
 
       <div className="table-wrap">
