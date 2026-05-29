@@ -14,6 +14,7 @@ Local server: http://localhost:3001
 - Make small, focused changes.
 - Reuse existing patterns.
 - Run `npm run build` after meaningful changes.
+- After `npm run build`, restart the Next dev server and clear `.next` before browser verification; stale dev cache can show localhost as unstyled HTML.
 - Do not commit or push without approval.
 - For commits, follow `docs/codex-commit-workflow.md`.
 - Keep this file under 200 lines.
