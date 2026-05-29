@@ -37,7 +37,7 @@ function approvalStateLabel(task: PendingPaymentApprovalTask) {
   }
 
   if (task.paymentApprovalState === "no_approval") {
-    return "טרם נוצר אישור ביצוע";
+    return "ממתין לאישור ביצוע";
   }
 
   if (task.paymentApprovalState === "duplicate_approval") {
@@ -83,14 +83,16 @@ function approvalWaitReason(task: PendingPaymentApprovalTask) {
   }
 
   if (task.paymentApprovalState === "no_approval") {
-    return "טרם נוצר אישור ביצוע. לחיצה על אישור תיצור אישור ביצוע ידני.";
+    return "ממתין ליצירת אישור ביצוע על ידי Airtable";
   }
 
   return "נדרש אישור ידני של אלירן לפני כניסה לדוח התשלומים החודשי.";
 }
 
 function approvalReasonClass(task: PendingPaymentApprovalTask) {
-  return task.paymentWarning || !task.paymentAmount
+  return task.paymentWarning ||
+    !task.paymentAmount ||
+    task.paymentApprovalState === "no_approval"
     ? "pending-approvals__reason pending-approvals__reason--blocked"
     : "pending-approvals__reason";
 }
@@ -103,12 +105,20 @@ export function PendingPaymentApprovalsClient({
   const [approvingTaskId, setApprovingTaskId] = useState<string | null>(null);
   const [approvalError, setApprovalError] = useState<string | null>(null);
   const blockedTaskCount = tasks.filter(
-    (task) => task.paymentWarning || !task.paymentAmount,
+    (task) =>
+      task.paymentWarning ||
+      !task.paymentAmount ||
+      task.paymentApprovalState !== "pending_approval",
   ).length;
   const approvableTaskCount = tasks.length - blockedTaskCount;
 
   function handleApprove(task: PendingPaymentApprovalTask) {
-    if (isPending || !task.paymentAmount || task.paymentWarning) {
+    if (
+      isPending ||
+      !task.paymentAmount ||
+      task.paymentWarning ||
+      task.paymentApprovalState !== "pending_approval"
+    ) {
       return;
     }
 
@@ -148,8 +158,8 @@ export function PendingPaymentApprovalsClient({
         <div>
           <h2>אישורי ביצוע ממתינים לאלירן</h2>
           <p>
-            משימה נכנסת לתשלום רק אחרי אישור ידני של אלירן. האישור כאן יוצר
-            או מעדכן אישור ביצוע תקף לתשלום.
+            משימה נכנסת לתשלום רק אחרי שאוטומציית Airtable יצרה אישור ביצוע
+            ואלירן אישר אותו ידנית לתשלום.
           </p>
         </div>
         <div className="payment-workspace__chips" aria-label="סיכום אישורים ממתינים">
@@ -185,7 +195,10 @@ export function PendingPaymentApprovalsClient({
           </thead>
           <tbody>
             {tasks.map((task) => {
-              const canApprove = Boolean(task.paymentAmount) && !task.paymentWarning;
+              const canApprove =
+                Boolean(task.paymentAmount) &&
+                !task.paymentWarning &&
+                task.paymentApprovalState === "pending_approval";
               const isApprovingCurrentTask = approvingTaskId === task.id;
 
               return (
@@ -234,16 +247,20 @@ export function PendingPaymentApprovalsClient({
                     <span className="badge badge--muted">לא מוצג בשלב זה</span>
                   </td>
                   <td>
-                    <button
-                      className="primary-action"
-                      type="button"
-                      disabled={!canApprove || isApprovingCurrentTask}
-                      onClick={() => handleApprove(task)}
-                    >
-                      {isApprovingCurrentTask
-                        ? "מאשר..."
-                        : "אשר ביצוע ותשלום"}
-                    </button>
+                    {task.paymentApprovalState === "no_approval" ? (
+                      <span className="badge badge--muted">ממתין לאוטומציה</span>
+                    ) : (
+                      <button
+                        className="primary-action"
+                        type="button"
+                        disabled={!canApprove || isApprovingCurrentTask}
+                        onClick={() => handleApprove(task)}
+                      >
+                        {isApprovingCurrentTask
+                          ? "מאשר..."
+                          : "אשר ביצוע ותשלום"}
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

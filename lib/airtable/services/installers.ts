@@ -1511,17 +1511,34 @@ export async function approveTaskPayment(taskId: string) {
     };
   }
 
+  if (approvalRecords.length === 0) {
+    return {
+      ok: false as const,
+      message: "ממתין ליצירת אישור ביצוע על ידי Airtable Automation",
+      errors: ["אישור התשלום יתאפשר אחרי שהאוטומציה תיצור אישור ביצוע ממתין."],
+    };
+  }
+
   if (approvalRecords.length === 1) {
     const existingApproval = approvalRecords[0];
+    const approvalStatus = textValue(existingApproval.fields.fldmg9acRqIp0zim0);
 
     if (
       booleanValue(existingApproval.fields.fldxJM4QXKh7kitBM) ||
-      textValue(existingApproval.fields.fldmg9acRqIp0zim0) === "מבוטל"
+      approvalStatus === "מבוטל"
     ) {
       return {
         ok: false as const,
         message: "לא ניתן לאשר ביצוע ותשלום על בסיס אישור ביצוע מבוטל.",
         errors: ["יש להסדיר את אישור הביצוע המבוטל באיירטייבל לפני אישור מחדש."],
+      };
+    }
+
+    if (approvalStatus !== "ממתין") {
+      return {
+        ok: false as const,
+        message: "לא ניתן לאשר תשלום על בסיס אישור ביצוע שאינו ממתין.",
+        errors: ["יש להסדיר את סטטוס אישור הביצוע באיירטייבל לפני אישור התשלום."],
       };
     }
   }
@@ -1538,15 +1555,11 @@ export async function approveTaskPayment(taskId: string) {
   };
 
   try {
-    if (approvalRecords.length === 1) {
-      await updateRecord<ApprovalPaymentFields>(
-        APPROVALS_TABLE_ID,
-        approvalRecords[0].id,
-        approvalFields,
-      );
-    } else {
-      await createRecord<ApprovalPaymentFields>(APPROVALS_TABLE_ID, approvalFields);
-    }
+    await updateRecord<ApprovalPaymentFields>(
+      APPROVALS_TABLE_ID,
+      approvalRecords[0].id,
+      approvalFields,
+    );
 
     return {
       ok: true as const,
