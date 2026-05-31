@@ -146,6 +146,7 @@ export function mapOrder(record: RawRecord): Order {
       ? record.fields.fldIJzxGrwPaDNACs.filter((item): item is string => typeof item === "string")
       : [],
     taskIds: linkedRecordIds(record.fields.fldEZ175gAwbH7vge),
+    openTaskCount: 0,
     sendStatus: easyCountStatus,
     productDescription: nullableTextValue(record.fields.fldvuJBwo3Qb4ub7p),
     customProductionStatus: customProductionStatusValue(

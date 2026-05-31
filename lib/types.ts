@@ -240,6 +240,7 @@ export type Order = {
   shortNotes: string | null;
   orderLineIds: string[];
   taskIds: string[];
+  openTaskCount: number;
   sendStatus: string | null;
   productDescription: string | null;
   customProductionStatus: CustomProductionStatus | null;

@@ -556,7 +556,7 @@ export function OrdersTableClient({
           {filteredOrders.map((order) => {
             const initialPaymentStage = firstPaymentStage(order);
             const showFinalInvoice = initialPaymentStage === "advance_60";
-            const linkedTaskCount = order.taskIds.length;
+            const linkedTaskCount = order.openTaskCount;
             const taskIndicator =
               linkedTaskCount > 0
                 ? `משימות פתוחות: ${linkedTaskCount}`

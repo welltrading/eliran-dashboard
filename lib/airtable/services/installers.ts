@@ -62,17 +62,6 @@ type ApprovalPaymentFields = {
   fldDLbU0YVyUJN3WV?: string;
 };
 
-type InstallerMonthlyPaymentWriteFields = {
-  fldcM0YGpLHWIg4PZ?: string;
-  fldmSOmxfRd8UrDxg?: string;
-  fld594iX5aq1LoMU5?: string[];
-  fldjSy3ma0Mt0PAPQ?: string;
-  fldXjjBCkocB0DVJ7?: number;
-  fldS6XbWsE6uMtPqp?: "פתוח";
-  fldHso8OGch2Bw937?: string[];
-  fldDwt9bGfyl20oSF?: string;
-};
-
 type InstallerMonthlyPaymentPaidFields = {
   fldS6XbWsE6uMtPqp: "שולם";
   fldF8uamPnjnRE5xF: string;
@@ -130,6 +119,11 @@ function nullableTextValue(value: unknown) {
 function numberValue(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = Number(value.replace(/,/g, ""));
+    return Number.isFinite(normalized) ? normalized : 0;
   }
 
   if (Array.isArray(value)) {
@@ -472,8 +466,22 @@ function mapMonthlyPaymentDetail(
   };
 }
 
-function paymentRecordKey(installerId: string, airtableMonth: string) {
-  return `${installerId}|${airtableMonth}`;
+function normalizePaymentKeyPart(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function normalizePaymentKey(value: string) {
+  const [installerName, month, ...extraParts] = value.split("|");
+
+  if (!installerName || !month || extraParts.length > 0) {
+    return normalizePaymentKeyPart(value);
+  }
+
+  return `${normalizePaymentKeyPart(installerName)}|${normalizePaymentKeyPart(month)}`;
+}
+
+function paymentRecordKey(installerName: string, airtableMonth: string) {
+  return normalizePaymentKey(`${installerName}|${airtableMonth}`);
 }
 
 function isOpenMonthlyPaymentStatus(status: string | null) {
@@ -543,7 +551,7 @@ function mapInstallerMonthlyPaymentRecord(
   return {
     id: record.id,
     name: nullableTextValue(fields.fldcM0YGpLHWIg4PZ),
-    paymentKey: textValue(fields.fldmSOmxfRd8UrDxg) || fallbackKey,
+    paymentKey: normalizePaymentKey(textValue(fields.fldmSOmxfRd8UrDxg) || fallbackKey),
     status: nullableTextValue(fields.fldS6XbWsE6uMtPqp),
     amount: numberValue(fields.fldXjjBCkocB0DVJ7),
     paymentDate: nullableTextValue(fields.fldF8uamPnjnRE5xF),
@@ -558,14 +566,8 @@ function buildMonthlyPaymentRecordsByKey(
   const byKey = new Map<string, InstallerMonthlyPaymentRecordSnapshot[]>();
 
   records.forEach((record) => {
-    const explicitKey = textValue(record.fields.fldmSOmxfRd8UrDxg);
-    const installerIds = linkedRecordIds(record.fields.fld594iX5aq1LoMU5);
-    const month = textValue(record.fields.fldjSy3ma0Mt0PAPQ);
-    const fallbackKeys =
-      !explicitKey && month
-        ? installerIds.map((installerId) => paymentRecordKey(installerId, month))
-        : [];
-    const keys = explicitKey ? [explicitKey] : fallbackKeys;
+    const explicitKey = normalizePaymentKey(textValue(record.fields.fldmSOmxfRd8UrDxg));
+    const keys = explicitKey ? [explicitKey] : [];
 
     keys.forEach((key) => {
       const mappedRecord = mapInstallerMonthlyPaymentRecord(record, key);
@@ -628,7 +630,7 @@ function buildMonthlyReportByInstaller(
       approvalCount: item.details.length,
       totalAmount: item.totalAmount,
       monthlyPaymentRecord: monthlyPaymentRecordState(
-        monthlyPaymentRecordsByKey.get(paymentRecordKey(item.installerId, airtableMonth)),
+        monthlyPaymentRecordsByKey.get(paymentRecordKey(item.installerName, airtableMonth)),
       ),
       details: item.details.sort((a, b) => {
         if (a.installationDate && b.installationDate) {
@@ -1095,9 +1097,6 @@ export async function syncInstallerMonthlyPayment(input: {
     };
   }
 
-  const airtableMonth = airtablePaymentMonth(selectedMonth);
-  const key = paymentRecordKey(installerId, airtableMonth);
-
   if (!installerId) {
     return {
       ok: false,
@@ -1106,123 +1105,10 @@ export async function syncInstallerMonthlyPayment(input: {
     };
   }
 
-  const [approvalRecords, installerRecords, monthlyPaymentRecords] = await Promise.all([
-    selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
-      cache: "no-store",
-      returnFieldsByFieldId: true,
-    }),
-    selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
-      cache: "no-store",
-      returnFieldsByFieldId: true,
-    }),
-    selectRecords<RawInstallerMonthlyPaymentFields>(INSTALLER_MONTHLY_PAYMENTS_TABLE_ID, {
-      cache: "no-store",
-      returnFieldsByFieldId: true,
-    }),
-  ]);
-
-  const installer = installerRecords.find((record) => record.id === installerId);
-  const installerName = installer
-    ? textValue(installer.fields.fldOSaSnJIAr43Btv) ||
-      textValue(installer.fields["שם מתקין"]) ||
-      "ללא שם מתקין"
-    : "ללא שם מתקין";
-
-  if (!installer) {
-    return {
-      ok: false,
-      action: "blocked",
-      message: "המתקין לא נמצא באיירטייבל.",
-    };
-  }
-
-  const validApprovals = validMonthlyApprovalsForInstaller(
-    approvalRecords,
-    installerId,
-    airtableMonth,
-  );
-
-  if (validApprovals.length === 0) {
-    return {
-      ok: false,
-      action: "no_approvals",
-      message: `לא נמצאו אישורי ביצוע תקפים עבור ${installerName} בחודש ${airtableMonth}.`,
-    };
-  }
-
-  const totalAmount = validApprovals.reduce(
-    (total, approval) => total + numberValue(approval.fields.fldsMGqafeCRlN7zo),
-    0,
-  );
-  const includedApprovalIds = validApprovals.map((approval) => approval.id);
-  const existingRecords = buildMonthlyPaymentRecordsByKey(monthlyPaymentRecords).get(key) ?? [];
-
-  if (existingRecords.length > 1) {
-    return {
-      ok: false,
-      action: "duplicate",
-      message: "קיימת כפילות רשומות תשלום חודשיות למתקין ולחודש הזה. נדרש טיפול ידני לפני סנכרון.",
-    };
-  }
-
-  const fields: InstallerMonthlyPaymentWriteFields = {
-    fldcM0YGpLHWIg4PZ: `${installerName} | ${airtableMonth}`,
-    fldmSOmxfRd8UrDxg: key,
-    fld594iX5aq1LoMU5: [installerId],
-    fldjSy3ma0Mt0PAPQ: airtableMonth,
-    fldXjjBCkocB0DVJ7: totalAmount,
-    fldHso8OGch2Bw937: includedApprovalIds,
-    fldDwt9bGfyl20oSF: "נוצר מדוח סוף חודש",
-  };
-
-  const existingRecord = existingRecords[0];
-
-  if (!existingRecord) {
-    const createdRecord = await createRecord<RawInstallerMonthlyPaymentFields>(
-      INSTALLER_MONTHLY_PAYMENTS_TABLE_ID,
-      {
-        ...fields,
-        fldS6XbWsE6uMtPqp: "פתוח",
-      },
-    );
-
-    return {
-      ok: true,
-      action: "created",
-      message: `נוצר תשלום חודשי פתוח עבור ${installerName} בסך ${totalAmount} ש"ח.`,
-      recordId: createdRecord.id,
-    };
-  }
-
-  if (isLockedMonthlyPaymentStatus(existingRecord.status)) {
-    return {
-      ok: false,
-      action: "blocked",
-      message: `רשומת התשלום החודשית בסטטוס ${existingRecord.status} ולכן לא עודכנה.`,
-      recordId: existingRecord.id,
-    };
-  }
-
-  if (!isOpenMonthlyPaymentStatus(existingRecord.status)) {
-    return {
-      ok: false,
-      action: "blocked",
-      message: `רשומת התשלום החודשית בסטטוס ${existingRecord.status}; ניתן לסנכרן רק רשומה פתוחה.`,
-      recordId: existingRecord.id,
-    };
-  }
-
-  await updateRecord<RawInstallerMonthlyPaymentFields>(
-    INSTALLER_MONTHLY_PAYMENTS_TABLE_ID,
-    existingRecord.id,
-    fields,
-  );
-
   return {
-    ok: true,
-    action: "updated",
-    message: `רשומת התשלום החודשית סונכרנה עבור ${installerName} בסך ${totalAmount} ש"ח.`,
-    recordId: existingRecord.id,
+    ok: false,
+    action: "blocked",
+    message: "יצירת וסנכרון תשלום חודשי מתבצעים רק באוטומציית Airtable.",
   };
 }
 
@@ -1260,7 +1146,6 @@ export async function markInstallerMonthlyPaymentPaid(input: {
   }
 
   const airtableMonth = airtablePaymentMonth(selectedMonth);
-  const key = paymentRecordKey(installerId, airtableMonth);
   const [approvalRecords, monthlyPaymentRecords] = await Promise.all([
     selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
       cache: "no-store",
@@ -1271,7 +1156,29 @@ export async function markInstallerMonthlyPaymentPaid(input: {
       returnFieldsByFieldId: true,
     }),
   ]);
-  const existingRecords = buildMonthlyPaymentRecordsByKey(monthlyPaymentRecords).get(key) ?? [];
+  const rawExistingRecord = monthlyPaymentRecords.find((record) => record.id === recordId);
+
+  if (!rawExistingRecord) {
+    return {
+      ok: false,
+      action: "not_found",
+      message: "לא נמצאה רשומת תשלום חודשית למתקין ולחודש הזה.",
+    };
+  }
+
+  const existingRecord = mapInstallerMonthlyPaymentRecord(
+    rawExistingRecord,
+    normalizePaymentKey(textValue(rawExistingRecord.fields.fldmSOmxfRd8UrDxg)),
+  );
+  const existingKey = existingRecord.paymentKey;
+  const existingRecords = monthlyPaymentRecords
+    .map((record) =>
+      mapInstallerMonthlyPaymentRecord(
+        record,
+        normalizePaymentKey(textValue(record.fields.fldmSOmxfRd8UrDxg)),
+      ),
+    )
+    .filter((record) => record.paymentKey === existingKey);
 
   if (existingRecords.length === 0) {
     return {
@@ -1289,14 +1196,15 @@ export async function markInstallerMonthlyPaymentPaid(input: {
     };
   }
 
-  const existingRecord = existingRecords[0];
-
-  if (existingRecord.id !== recordId) {
+  if (
+    !linkedRecordIds(rawExistingRecord.fields.fld594iX5aq1LoMU5).includes(installerId) ||
+    textValue(rawExistingRecord.fields.fldjSy3ma0Mt0PAPQ) !== airtableMonth
+  ) {
     return {
       ok: false,
       action: "blocked",
       message: "רשומת התשלום אינה תואמת למתקין ולחודש שנבחרו.",
-      recordId: existingRecord.id,
+      recordId,
     };
   }
 

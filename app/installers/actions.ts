@@ -4,7 +4,6 @@ import {
   approveTaskPayment,
   createInstaller,
   markInstallerMonthlyPaymentPaid,
-  syncInstallerMonthlyPayment,
 } from "@/lib/airtable/services/installers";
 import type { InstallerMonthlyPaymentMutationResult } from "@/lib/types";
 
@@ -20,35 +19,6 @@ export async function createInstallerAction(input: {
   email?: string | null;
 }) {
   return createInstaller(input);
-}
-
-export async function syncInstallerMonthlyPaymentAction(
-  installerId: string,
-  paymentMonth: string,
-): Promise<InstallerMonthlyPaymentMutationResult> {
-  const normalizedInstallerId = installerId.trim();
-  const normalizedPaymentMonth = paymentMonth.trim();
-
-  if (!normalizedInstallerId) {
-    return {
-      ok: false,
-      action: "blocked",
-      message: "חסר מתקין לסנכרון תשלום חודשי.",
-    };
-  }
-
-  if (!/^\d{4}-\d{2}$/.test(normalizedPaymentMonth)) {
-    return {
-      ok: false,
-      action: "blocked",
-      message: "חודש התשלום אינו תקין.",
-    };
-  }
-
-  return syncInstallerMonthlyPayment({
-    installerId: normalizedInstallerId,
-    paymentMonth: normalizedPaymentMonth,
-  });
 }
 
 export async function markInstallerMonthlyPaymentPaidAction(

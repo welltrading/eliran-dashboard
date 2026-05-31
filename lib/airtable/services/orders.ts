@@ -6,7 +6,7 @@ import type {
 } from "@/lib/types";
 import { selectRecords } from "../client";
 import { mapOrder } from "../mappers/orders";
-import type { RawOrderFields } from "../raw-types";
+import type { RawOrderFields, RawTaskFields } from "../raw-types";
 import { airtableTables } from "../tables";
 import { createRecord, updateRecord } from "../write-client";
 
@@ -72,6 +72,14 @@ type UpdatedCustomProductionFields = {
   fldtpYU0EOhDmLiD8?: boolean;
 };
 
+type MinimalTaskRecord = {
+  id: string;
+  fields: Pick<
+    RawTaskFields,
+    "fldJQBgJQDdtQFvML" | "fldAP5bP6n8okIqec" | "fld00gbAzyZVvDWOt"
+  >;
+};
+
 const orderTypes: OrderType[] = ["סטנדרטי", "ייצור אישי"];
 const orderStatuses: OrderStatus[] = [
   "חדשה",
@@ -131,6 +139,54 @@ function timestampValue(value: string | null) {
 
 function normalizedText(value: string | null | undefined) {
   return value?.trim() ?? "";
+}
+
+function textValue(value: unknown) {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "name" in value &&
+    typeof value.name === "string"
+  ) {
+    return value.name.trim();
+  }
+
+  return "";
+}
+
+function booleanValue(value: unknown) {
+  return value === true;
+}
+
+function linkedRecordIds(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function isOpenLinkedTask(task: MinimalTaskRecord) {
+  return textValue(task.fields.fldAP5bP6n8okIqec) !== "בוצע" &&
+    !booleanValue(task.fields.fld00gbAzyZVvDWOt);
+}
+
+function buildOpenTaskCountByOrderId(tasks: MinimalTaskRecord[]) {
+  const counts = new Map<string, number>();
+
+  tasks.forEach((task) => {
+    if (!isOpenLinkedTask(task)) {
+      return;
+    }
+
+    linkedRecordIds(task.fields.fldJQBgJQDdtQFvML).forEach((orderId) => {
+      counts.set(orderId, (counts.get(orderId) ?? 0) + 1);
+    });
+  });
+
+  return counts;
 }
 
 function normalizeOptionalNumber(value: string | number | null | undefined) {
@@ -273,12 +329,22 @@ function validateInput(input: CreateStandaloneOrderInput) {
 }
 
 export async function getOrders() {
-  const records = await selectRecords<RawOrderFields>(airtableTables.orders, {
-    returnFieldsByFieldId: true,
-  });
+  const [records, taskRecords] = await Promise.all([
+    selectRecords<RawOrderFields>(airtableTables.orders, {
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<MinimalTaskRecord["fields"]>(airtableTables.tasks, {
+      fields: ["fldJQBgJQDdtQFvML", "fldAP5bP6n8okIqec", "fld00gbAzyZVvDWOt"],
+      returnFieldsByFieldId: true,
+    }),
+  ]);
+  const openTaskCountByOrderId = buildOpenTaskCountByOrderId(taskRecords);
 
   return records
-    .map(mapOrder)
+    .map((record) => ({
+      ...mapOrder(record),
+      openTaskCount: openTaskCountByOrderId.get(record.id) ?? 0,
+    }))
     .sort((a, b) => {
       const orderNumberDiff =
         (numericValue(b.orderNumber) ?? Number.NEGATIVE_INFINITY) -

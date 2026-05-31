@@ -2,10 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
-import {
-  markInstallerMonthlyPaymentPaidAction,
-  syncInstallerMonthlyPaymentAction,
-} from "./actions";
+import { markInstallerMonthlyPaymentPaidAction } from "./actions";
 import type {
   InstallerMonthlyPaymentSummary,
   InstallerMonthlyPaymentRecordState,
@@ -45,7 +42,9 @@ function renderMonthlyPaymentRecordState(state: InstallerMonthlyPaymentRecordSta
   if (state.kind === "missing") {
     return (
       <div className="installer-monthly-report__payment-state">
-        <span className="badge badge--muted">לא נוצרה רשומת תשלום</span>
+        <span className="badge badge--warning">
+          לא נמצאה רשומת תשלום חודשית — יש לבדוק את אוטומציית Airtable
+        </span>
       </div>
     );
   }
@@ -90,14 +89,6 @@ function renderMonthlyPaymentRecordState(state: InstallerMonthlyPaymentRecordSta
   );
 }
 
-function canSyncMonthlyPayment(state: InstallerMonthlyPaymentRecordState) {
-  return (
-    state.kind === "missing" ||
-    (state.kind === "existing" &&
-      (!state.record.status || state.record.status === "פתוח"))
-  );
-}
-
 function sameStringSet(left: string[], right: string[]) {
   if (left.length !== right.length) {
     return false;
@@ -128,7 +119,6 @@ export function InstallerMonthlyPaymentsReportClient({
 }: InstallerMonthlyPaymentsReportClientProps) {
   const router = useRouter();
   const [openInstallerId, setOpenInstallerId] = useState<string | null>(null);
-  const [syncingInstallerId, setSyncingInstallerId] = useState<string | null>(null);
   const [payingInstallerId, setPayingInstallerId] = useState<string | null>(null);
   const [mutationResult, setMutationResult] =
     useState<InstallerMonthlyPaymentMutationResult | null>(null);
@@ -139,32 +129,6 @@ export function InstallerMonthlyPaymentsReportClient({
     }
 
     router.push(`/installers?paymentMonth=${value}`);
-  }
-
-  async function handleSyncMonthlyPayment(installer: InstallerMonthlyPaymentSummary) {
-    setMutationResult(null);
-    setSyncingInstallerId(installer.installerId);
-
-    try {
-      const result = await syncInstallerMonthlyPaymentAction(
-        installer.installerId,
-        report.selectedMonth,
-      );
-
-      setMutationResult(result);
-      setSyncingInstallerId(null);
-
-      if (result.ok) {
-        router.refresh();
-      }
-    } catch {
-      setMutationResult({
-        ok: false,
-        action: "blocked",
-        message: "סנכרון התשלום החודשי נכשל. נסו שוב או בדקו את הרשומה באיירטייבל.",
-      });
-      setSyncingInstallerId(null);
-    }
   }
 
   async function handleMarkMonthlyPaymentPaid(installer: InstallerMonthlyPaymentSummary) {
@@ -202,9 +166,8 @@ export function InstallerMonthlyPaymentsReportClient({
 
   function renderMonthlyPaymentAction(installer: InstallerMonthlyPaymentSummary) {
     const state = installer.monthlyPaymentRecord;
-    const isSyncing = syncingInstallerId === installer.installerId;
     const isPaying = payingInstallerId === installer.installerId;
-    const hasPendingMutation = syncingInstallerId !== null || payingInstallerId !== null;
+    const hasPendingMutation = payingInstallerId !== null;
 
     if (state.kind === "duplicate") {
       return (
@@ -255,20 +218,15 @@ export function InstallerMonthlyPaymentsReportClient({
       );
     }
 
-    return (
-      <button
-        className="task-row-actions__secondary"
-        type="button"
-        disabled={!canSyncMonthlyPayment(state) || hasPendingMutation}
-        onClick={() => handleSyncMonthlyPayment(installer)}
-      >
-        {isSyncing
-          ? "מסנכרן..."
-          : state.kind === "missing"
-            ? "צור תשלום חודשי"
-            : "סנכרן תשלום פתוח"}
-      </button>
-    );
+    if (state.kind === "missing") {
+      return (
+        <span className="badge badge--warning">
+          יש לבדוק את אוטומציית Airtable
+        </span>
+      );
+    }
+
+    return <span className="badge badge--warning">נדרש טיפול לפני תשלום</span>;
   }
 
   return (

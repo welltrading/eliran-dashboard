@@ -14,6 +14,7 @@ type AirtableListResponse<TFields> = {
 
 type SelectOptions = {
   view?: string;
+  fields?: string[];
   pageSize?: number;
   filterByFormula?: string;
   returnFieldsByFieldId?: boolean;
@@ -42,6 +43,10 @@ function buildSelectUrl(baseId: string, tableName: string, options: SelectOption
   if (options.returnFieldsByFieldId) {
     url.searchParams.set("returnFieldsByFieldId", "true");
   }
+
+  options.fields?.forEach((field) => {
+    url.searchParams.append("fields[]", field);
+  });
 
   options.sort?.forEach((sortItem, index) => {
     url.searchParams.set(`sort[${index}][field]`, sortItem.field);
