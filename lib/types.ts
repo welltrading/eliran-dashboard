@@ -78,6 +78,8 @@ export type PendingPaymentApprovalTask = {
   id: string;
   executionDate: string | null;
   customerName: string | null;
+  phone: string | null;
+  address: string | null;
   orderNumber: string | null;
   taskType: string | null;
   installerId: string;
@@ -186,6 +188,38 @@ export type InstallerMonthlyPaymentMutationResult = {
 };
 
 export type InstallerMonthlyPaymentSyncResult = InstallerMonthlyPaymentMutationResult;
+
+export type InstallerMonthlyPaymentIncludedApproval = {
+  id: string;
+  approvalId: string;
+  approvalNumber: string | null;
+  taskTitle: string | null;
+  orderNumber: string | null;
+  taskType: string | null;
+  installationDate: string | null;
+  amount: number;
+};
+
+export type InstallerMonthlyPaymentRow = {
+  id: string;
+  installerName: string;
+  paymentMonth: string;
+  amount: number;
+  status: InstallerMonthlyPaymentRecordStatus | null;
+  paymentDate: string | null;
+  includedApprovalCount: number;
+  includedApprovals: InstallerMonthlyPaymentIncludedApproval[];
+};
+
+export type InstallerMonthlyPaymentsPageReport = {
+  selectedMonth: string;
+  airtableMonth: string;
+  records: InstallerMonthlyPaymentRow[];
+  totalOpenAmount: number;
+  totalPaidAmount: number;
+  installersToPayCount: number;
+  openRecordCount: number;
+};
 
 export type ApprovalMissingAmountIssue = {
   id: string;

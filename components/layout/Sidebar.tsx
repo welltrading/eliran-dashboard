@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Boxes,
+  CheckCircle2,
   ClipboardList,
+  CreditCard,
   FileText,
   Gauge,
   Hammer,
@@ -23,6 +25,8 @@ const navItems = [
   { href: "/order-lines", label: "שורות הזמנה", icon: ListOrdered },
   { href: "/inventory", label: "מלאי לפי מיקום", icon: Warehouse },
   { href: "/inventory/movements", label: "תנועות מלאי", icon: Boxes },
+  { href: "/approvals", label: "אישורי ביצוע", icon: CheckCircle2 },
+  { href: "/payments", label: "תשלומי מתקינים", icon: CreditCard },
   { href: "/installers", label: "מתקינים", icon: PackageOpen },
   { href: "/customers", label: "לקוחות", icon: Users },
 ];

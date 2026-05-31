@@ -211,11 +211,44 @@ textarea {
   margin-bottom: 16px;
 }
 
+.approvals-summary,
+.payments-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
 .card {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.installers-routing-card {
+  margin-bottom: 16px;
+}
+
+.installers-routing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.installers-routing h2,
+.installers-routing p {
+  margin: 0;
+}
+
+.installers-routing h2 {
+  font-size: 18px;
+}
+
+.installers-routing p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
 }
 
 .validation-card {
@@ -1424,6 +1457,28 @@ textarea {
   min-width: 1160px;
 }
 
+.approvals-table {
+  min-width: 1380px;
+}
+
+.payments-table {
+  min-width: 1120px;
+}
+
+.approval-status-cell {
+  display: grid;
+  gap: 6px;
+  min-width: 190px;
+}
+
+.approval-status-cell span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  white-space: normal;
+}
+
 .pending-approvals__main-cell {
   display: grid;
   gap: 3px;
@@ -2251,6 +2306,8 @@ textarea {
   }
 
   .inventory-summary,
+  .approvals-summary,
+  .payments-summary,
   .tasks-summary,
   .validation-grid,
   .exception-item,
@@ -2289,6 +2346,8 @@ textarea {
   .filters-bar,
     .stats-grid,
     .inventory-summary,
+    .approvals-summary,
+    .payments-summary,
     .tasks-summary,
     .validation-grid,
     .exception-item,

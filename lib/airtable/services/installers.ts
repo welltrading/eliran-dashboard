@@ -4,7 +4,10 @@ import type {
   DuplicateTaskApprovalIssue,
   Installer,
   InstallerMonthlyPaymentDetail,
+  InstallerMonthlyPaymentIncludedApproval,
   InstallerMonthlyPaymentReport,
+  InstallerMonthlyPaymentsPageReport,
+  InstallerMonthlyPaymentRow,
   InstallerMonthlyPaymentRecordSnapshot,
   InstallerMonthlyPaymentRecordState,
   InstallerMonthlyPaymentSummary,
@@ -378,6 +381,8 @@ function mapPendingPaymentApprovalTask(
     id: task.id,
     executionDate: nullableTextValue(fields.fld7wFWvaROfYEQ8B),
     customerName: taskCustomerName(fields),
+    phone: nullableTextValue(fields.fld6yO2AJBtvihM9W),
+    address: nullableTextValue(fields.fldzHUUvieCC7sZqz),
     orderNumber: firstListText(fields.fldJktpQOU9RRgy1t),
     taskType: taskTypeLabel(fields),
     installerId,
@@ -557,6 +562,78 @@ function mapInstallerMonthlyPaymentRecord(
     paymentDate: nullableTextValue(fields.fldF8uamPnjnRE5xF),
     includedApprovalCount: includedApprovalIds.length,
     includedApprovalIds,
+  };
+}
+
+function mapIncludedMonthlyPaymentApproval(
+  approvalId: string,
+  approvalById: Map<string, AirtableRecord<RawExecutionApprovalFields>>,
+  taskById: Map<string, AirtableRecord<RawInstallerTaskFields>>,
+): InstallerMonthlyPaymentIncludedApproval {
+  const approval = approvalById.get(approvalId);
+  const fields = approval?.fields;
+  const taskId = fields ? linkedRecordIds(fields.fldpAZh1st8qRqA7n)[0] : undefined;
+  const task = taskId ? taskById.get(taskId) : undefined;
+
+  return {
+    id: approvalId,
+    approvalId,
+    approvalNumber: fields ? nullableTextValue(fields.fld4qJrGGMWtr09dp) : null,
+    taskTitle: task ? nullableTextValue(task.fields.fld9pZpcEyipF5teB) : null,
+    orderNumber:
+      (task ? firstListText(task.fields.fldJktpQOU9RRgy1t) : null) ??
+      (fields ? firstListText(fields.flds6B6t8maAaevga) : null),
+    taskType:
+      (fields ? firstListText(fields.fldmOfBYtD9CjxDx6) : null) ??
+      (task ? taskTypeLabel(task.fields) : null),
+    installationDate:
+      (fields ? nullableTextValue(fields.fld82nUwa5hZGSDlF) : null) ??
+      (task ? nullableTextValue(task.fields.fld7wFWvaROfYEQ8B) : null),
+    amount: fields ? numberValue(fields.fldsMGqafeCRlN7zo) : 0,
+  };
+}
+
+function mapMonthlyPaymentRowFromRecord(
+  record: AirtableRecord<RawInstallerMonthlyPaymentFields>,
+  installerById: Map<string, string>,
+  approvalById: Map<string, AirtableRecord<RawExecutionApprovalFields>>,
+  taskById: Map<string, AirtableRecord<RawInstallerTaskFields>>,
+): InstallerMonthlyPaymentRow {
+  const fields = record.fields;
+  const installerId = linkedRecordIds(fields.fld594iX5aq1LoMU5)[0];
+  const includedApprovalIds = linkedRecordIds(fields.fldHso8OGch2Bw937);
+  const includedApprovals = includedApprovalIds
+    .map((approvalId) =>
+      mapIncludedMonthlyPaymentApproval(approvalId, approvalById, taskById),
+    )
+    .sort((a, b) => {
+      if (a.installationDate && b.installationDate) {
+        return a.installationDate.localeCompare(b.installationDate);
+      }
+
+      if (!a.installationDate && b.installationDate) {
+        return 1;
+      }
+
+      if (a.installationDate && !b.installationDate) {
+        return -1;
+      }
+
+      return (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "", "he");
+    });
+
+  return {
+    id: record.id,
+    installerName:
+      (installerId ? installerById.get(installerId) : null) ??
+      firstListText(fields.fldDwt9bGfyl20oSF) ??
+      "ללא שם מתקין",
+    paymentMonth: textValue(fields.fldjSy3ma0Mt0PAPQ),
+    amount: numberValue(fields.fldXjjBCkocB0DVJ7),
+    status: nullableTextValue(fields.fldS6XbWsE6uMtPqp),
+    paymentDate: nullableTextValue(fields.fldF8uamPnjnRE5xF),
+    includedApprovalCount: includedApprovalIds.length,
+    includedApprovals,
   };
 }
 
@@ -1082,6 +1159,80 @@ export async function getInstallerMonthlyPaymentReport(
   };
 }
 
+export async function getInstallerMonthlyPaymentsPageReport(
+  paymentMonth?: string | null,
+): Promise<InstallerMonthlyPaymentsPageReport> {
+  const selectedMonth = normalizePaymentMonth(paymentMonth);
+  const airtableMonth = airtablePaymentMonth(selectedMonth);
+  const [monthlyPaymentRecords, installerRecords, approvalRecords, taskRecords] =
+    await Promise.all([
+      selectRecords<RawInstallerMonthlyPaymentFields>(
+        INSTALLER_MONTHLY_PAYMENTS_TABLE_ID,
+        {
+          cache: "no-store",
+          returnFieldsByFieldId: true,
+        },
+      ),
+      selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
+        cache: "no-store",
+        returnFieldsByFieldId: true,
+      }),
+      selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
+        cache: "no-store",
+        returnFieldsByFieldId: true,
+      }),
+      selectRecords<RawInstallerTaskFields>(TASKS_TABLE_ID, {
+        cache: "no-store",
+        returnFieldsByFieldId: true,
+      }),
+    ]);
+
+  const installerById = new Map(
+    installerRecords.map((record) => [
+      record.id,
+      textValue(record.fields.fldOSaSnJIAr43Btv) || textValue(record.fields["שם מתקין"]),
+    ]),
+  );
+  const approvalById = new Map(approvalRecords.map((record) => [record.id, record]));
+  const taskById = buildTaskById(taskRecords);
+  const records = monthlyPaymentRecords
+    .filter((record) => textValue(record.fields.fldjSy3ma0Mt0PAPQ) === airtableMonth)
+    .map((record) =>
+      mapMonthlyPaymentRowFromRecord(
+        record,
+        installerById,
+        approvalById,
+        taskById,
+      ),
+    )
+    .sort((a, b) => {
+      const leftOpen = isOpenMonthlyPaymentStatus(a.status);
+      const rightOpen = isOpenMonthlyPaymentStatus(b.status);
+
+      if (leftOpen !== rightOpen) {
+        return leftOpen ? -1 : 1;
+      }
+
+      return a.installerName.localeCompare(b.installerName, "he");
+    });
+  const openRecords = records.filter((record) =>
+    isOpenMonthlyPaymentStatus(record.status),
+  );
+
+  return {
+    selectedMonth,
+    airtableMonth,
+    records,
+    totalOpenAmount: openRecords.reduce((total, record) => total + record.amount, 0),
+    totalPaidAmount: records
+      .filter((record) => record.status === "שולם")
+      .reduce((total, record) => total + record.amount, 0),
+    installersToPayCount: new Set(openRecords.map((record) => record.installerName))
+      .size,
+    openRecordCount: openRecords.length,
+  };
+}
+
 export async function syncInstallerMonthlyPayment(input: {
   installerId: string;
   paymentMonth: string;
@@ -1109,6 +1260,75 @@ export async function syncInstallerMonthlyPayment(input: {
     ok: false,
     action: "blocked",
     message: "יצירת וסנכרון תשלום חודשי מתבצעים רק באוטומציית Airtable.",
+  };
+}
+
+export async function markInstallerMonthlyPaymentRecordPaid(
+  recordId: string,
+): Promise<InstallerMonthlyPaymentMutationResult> {
+  const normalizedRecordId = recordId.trim();
+
+  if (!isAirtableRecordId(normalizedRecordId)) {
+    return {
+      ok: false,
+      action: "blocked",
+      message: "רשומת התשלום אינה תקינה.",
+    };
+  }
+
+  const monthlyPaymentRecords = await selectRecords<RawInstallerMonthlyPaymentFields>(
+    INSTALLER_MONTHLY_PAYMENTS_TABLE_ID,
+    {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    },
+  );
+  const rawExistingRecord = monthlyPaymentRecords.find(
+    (record) => record.id === normalizedRecordId,
+  );
+
+  if (!rawExistingRecord) {
+    return {
+      ok: false,
+      action: "blocked",
+      message: "רשומת התשלום לא נמצאה.",
+    };
+  }
+
+  const existingStatus = nullableTextValue(rawExistingRecord.fields.fldS6XbWsE6uMtPqp);
+
+  if (existingStatus === "שולם") {
+    return {
+      ok: false,
+      action: "blocked",
+      message: "רשומת התשלום כבר סומנה כשולמה.",
+      recordId: normalizedRecordId,
+    };
+  }
+
+  if (!isOpenMonthlyPaymentStatus(existingStatus)) {
+    return {
+      ok: false,
+      action: "blocked",
+      message: `רשומת התשלום החודשית בסטטוס ${existingStatus}; ניתן לסמן כשולם רק רשומה פתוחה.`,
+      recordId: normalizedRecordId,
+    };
+  }
+
+  await updateRecord<RawInstallerMonthlyPaymentFields>(
+    INSTALLER_MONTHLY_PAYMENTS_TABLE_ID,
+    normalizedRecordId,
+    {
+      fldS6XbWsE6uMtPqp: "שולם",
+      fldF8uamPnjnRE5xF: todayDateInTimeZone(),
+    } satisfies InstallerMonthlyPaymentPaidFields,
+  );
+
+  return {
+    ok: true,
+    action: "paid",
+    message: "התשלום החודשי סומן כשולם.",
+    recordId: normalizedRecordId,
   };
 }
 

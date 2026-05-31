@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import {
@@ -77,6 +78,23 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
         title="מתקינים ותשלומים"
         description="מרחב העבודה לאישור ביצוע ידני, דוח תשלומים חודשי וסגירת תשלום למתקינים."
       />
+
+      <Card className="installers-routing-card">
+        <div className="card__body installers-routing">
+          <div>
+            <h2>מסכי עבודה חדשים</h2>
+            <p>אפשר לעבור למסכים הייעודיים בלי לשנות את אזורי העבודה הקיימים בעמוד הזה.</p>
+          </div>
+          <div className="task-row-actions">
+            <Link className="secondary-action" href="/approvals">
+              אישורי ביצוע
+            </Link>
+            <Link className="secondary-action" href="/payments">
+              תשלומי מתקינים
+            </Link>
+          </div>
+        </div>
+      </Card>
 
       <Card className="validation-card">
         <CreateInstallerFormClient airtableTableUrl={AIRTABLE_INSTALLERS_TABLE_URL} />
