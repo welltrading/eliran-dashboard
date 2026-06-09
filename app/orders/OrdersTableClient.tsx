@@ -593,7 +593,7 @@ export function OrdersTableClient({
             <th>טלפון</th>
             <th>סוג הזמנה</th>
             <th>מקור הזמנה</th>
-            <th>תיאור מוצר</th>
+            <th>פריטים בהזמנה</th>
             <th>סטטוס</th>
             <th>תאריך יצירה</th>
             <th>מחיר כולל</th>
@@ -652,7 +652,7 @@ export function OrdersTableClient({
                         ))}
                         {order.documentLines.length > documentLineDescriptions.length ? (
                           <span>
-                            ועוד {order.documentLines.length - documentLineDescriptions.length} שורות
+                            ועוד {order.documentLines.length - documentLineDescriptions.length} פריטים
                           </span>
                         ) : null}
                       </div>
@@ -663,7 +663,7 @@ export function OrdersTableClient({
                       "-"
                     )}
                     {!hasDocumentLines(order) ? (
-                      <span className="badge badge--warning">אין שורות מסמך</span>
+                      <span className="badge badge--warning">אין פריטים</span>
                     ) : null}
                   </div>
                   <div className="orders-table__row-actions">
