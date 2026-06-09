@@ -798,7 +798,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                     <td>
                       <CreateQuoteButton
                         recordId={quote.id}
-                        quoteType={displayQuoteType(quote)}
+                        hasDocumentLines={hasDocumentLines}
                         ezDocUrl={quote.ezDocUrl}
                       />
                     </td>

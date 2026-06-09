@@ -1,14 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
-  isDocumentLinesWriteGuardEnabled,
-} from "@/lib/safety-guard";
 
 type CreateQuoteButtonProps = {
   recordId: string;
-  quoteType: string;
+  hasDocumentLines: boolean;
   ezDocUrl?: string | null;
 };
 
@@ -16,14 +12,13 @@ type RequestState = "idle" | "loading" | "success" | "error";
 
 export function CreateQuoteButton({
   recordId,
-  quoteType,
+  hasDocumentLines,
   ezDocUrl,
 }: CreateQuoteButtonProps) {
   const [state, setState] = useState<RequestState>("idle");
   const [message, setMessage] = useState<string | null>(null);
 
   const trimmedRecordId = recordId.trim();
-  const trimmedQuoteType = quoteType.trim();
 
   if (ezDocUrl) {
     return (
@@ -43,12 +38,6 @@ export function CreateQuoteButton({
       return;
     }
 
-    if (!trimmedQuoteType) {
-      setState("error");
-      setMessage("חסר סוג הצעת מחיר.");
-      return;
-    }
-
     setState("loading");
     setMessage(null);
 
@@ -60,7 +49,7 @@ export function CreateQuoteButton({
         },
         body: JSON.stringify({
           record_id: trimmedRecordId,
-          quote_type: trimmedQuoteType,
+          source: "document_lines",
         }),
       });
 
@@ -90,14 +79,14 @@ export function CreateQuoteButton({
     }
   }
 
-  if (isDocumentLinesWriteGuardEnabled()) {
+  if (!hasDocumentLines) {
     return (
       <div className="quote-action">
         <button className="quote-action__button" type="button" disabled>
           יצירת הצעת מחיר
         </button>
         <span className="quote-action__message">
-          {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
+          נדרשות שורות מסמך לפני הפקת הצעת EasyCount
         </span>
       </div>
     );

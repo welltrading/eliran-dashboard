@@ -1,23 +1,13 @@
 import { NextResponse } from "next/server";
-import { getAirtableConfig } from "@/lib/airtable/config";
-import { mapQuote } from "@/lib/airtable/mappers/quotes";
-import type { RawQuoteFields } from "@/lib/airtable/raw-types";
-import { airtableTables } from "@/lib/airtable/tables";
-import {
-  DOCUMENT_LINES_WRITE_GUARD_ERROR,
-  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
-  isDocumentLinesWriteGuardEnabled,
-} from "@/lib/safety-guard";
+import type { DocumentLine } from "@/lib/types";
+import { getQuoteById } from "@/lib/airtable/services/quotes";
 
 type CreateQuoteRequest = {
   record_id?: unknown;
-  quote_type?: unknown;
+  source?: unknown;
 };
 
-type AirtableRecordResponse = {
-  id: string;
-  fields: RawQuoteFields;
-};
+const airtableRecordIdPattern = /^rec[A-Za-z0-9]{14}$/;
 
 async function readMakeResponse(response: Response) {
   const text = await response.text();
@@ -33,43 +23,41 @@ async function readMakeResponse(response: Response) {
   }
 }
 
-async function getQuoteEzDocUrl(recordId: string) {
-  const { apiKey, baseId } = getAirtableConfig();
-  const url = new URL(
-    `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(
-      airtableTables.quotes,
-    )}/${recordId}`,
-  );
-  url.searchParams.set("returnFieldsByFieldId", "true");
+function documentLineValidationError(line: DocumentLine, index: number) {
+  const lineLabel = `שורת מסמך ${index + 1}`;
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`Airtable quote lookup failed: ${response.status} ${details}`);
+  if (!line.lineType) {
+    return `${lineLabel}: חסר סוג שורה.`;
   }
 
-  const record = (await response.json()) as AirtableRecordResponse;
-  return mapQuote(record).ezDocUrl;
+  if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
+    return `${lineLabel}: כמות חייבת להיות גדולה מ-0.`;
+  }
+
+  if (!Number.isFinite(line.unitPrice) || line.unitPrice < 0) {
+    return `${lineLabel}: מחיר יחידה חייב להיות 0 או יותר.`;
+  }
+
+  if (
+    line.lineType === "ייצור אישי" &&
+    !line.description.trim() &&
+    !line.displayDescription.trim()
+  ) {
+    return `${lineLabel}: שורת ייצור אישי חייבת תיאור.`;
+  }
+
+  if (
+    line.lineType === "סטנדרטי" &&
+    line.productIds.length === 0 &&
+    !line.displayDescription.trim()
+  ) {
+    return `${lineLabel}: שורת סטנדרטי חייבת מוצר או תיאור לתצוגה.`;
+  }
+
+  return null;
 }
 
 export async function POST(request: Request) {
-  if (isDocumentLinesWriteGuardEnabled()) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
-        details: DOCUMENT_LINES_WRITE_GUARD_ERROR,
-      },
-      { status: 423 },
-    );
-  }
-
   let body: CreateQuoteRequest;
 
   try {
@@ -83,19 +71,10 @@ export async function POST(request: Request) {
 
   const recordId =
     typeof body.record_id === "string" ? body.record_id.trim() : "";
-  const quoteType =
-    typeof body.quote_type === "string" ? body.quote_type.trim() : "";
 
-  if (!recordId) {
+  if (!airtableRecordIdPattern.test(recordId)) {
     return NextResponse.json(
-      { success: false, error: "Missing record_id" },
-      { status: 400 },
-    );
-  }
-
-  if (!quoteType) {
-    return NextResponse.json(
-      { success: false, error: "Missing quote_type" },
+      { success: false, error: "Missing or invalid record_id" },
       { status: 400 },
     );
   }
@@ -110,17 +89,52 @@ export async function POST(request: Request) {
   }
 
   try {
-    const ezDocUrl = await getQuoteEzDocUrl(recordId);
+    const quote = await getQuoteById(recordId);
 
-    if (ezDocUrl) {
+    if (!quote) {
       return NextResponse.json(
         {
           success: false,
-          error: "Quote already has EZ_DOC_URL",
+          error: "Quote not found",
+        },
+        { status: 404 },
+      );
+    }
+
+    if (quote.ezDocUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Quote already has EasyCount document",
           status: 409,
-          details: { ezDocUrl },
+          details: { ezDocUrl: quote.ezDocUrl },
         },
         { status: 409 },
+      );
+    }
+
+    if (quote.documentLines.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Quote has no document lines",
+        },
+        { status: 400 },
+      );
+    }
+
+    const validationErrors = quote.documentLines
+      .map(documentLineValidationError)
+      .filter((error): error is string => Boolean(error));
+
+    if (validationErrors.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Quote document lines are invalid",
+          details: validationErrors,
+        },
+        { status: 400 },
       );
     }
 
@@ -132,7 +146,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         record_id: recordId,
         doc_type: "quote",
-        quote_type: quoteType,
+        source: "document_lines",
       }),
     });
 
