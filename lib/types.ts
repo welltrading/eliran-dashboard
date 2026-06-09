@@ -464,6 +464,7 @@ export type Quote = {
   lineTypesFromDocumentLines: string[];
   quoteTypeFromDocumentLines: string | null;
   ezDocUrl: string | null;
+  ezDocNumber: string | null;
   leadSource: string | null;
   createOrderUrl: string | null;
   productIds: string[];

@@ -732,7 +732,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                       </div>
                     </td>
                     <td>{quote.ezDocUrl ? "כן" : "לא"}</td>
-                    <td>-</td>
+                    <td>{quote.ezDocNumber ?? "-"}</td>
                     <td>
                       {quote.ezDocUrl ? (
                         <a href={quote.ezDocUrl} target="_blank" rel="noreferrer">

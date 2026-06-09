@@ -184,6 +184,7 @@ export function mapQuote(
     lineTypesFromDocumentLines,
     quoteTypeFromDocumentLines: quoteTypeFromDocumentLines(documentLines),
     ezDocUrl: urlValue(record.fields.fldh8tz1xgQNCNGgH),
+    ezDocNumber: nullableTextValue(record.fields.fldf9PSV2gFZxXsxY),
     leadSource: nullableTextValue(record.fields.fldOY3RLPblIPoz60),
     createOrderUrl:
       urlValue(record.fields.fldgzZ3UQE6FOil0T) ??
