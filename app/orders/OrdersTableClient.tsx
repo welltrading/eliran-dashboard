@@ -277,7 +277,7 @@ export function OrdersTableClient({
 
     return (
       <tr className="tasks-table__assignment-row">
-        <td colSpan={11}>
+        <td colSpan={12}>
           <form
             className="task-assignment-editor"
             onSubmit={(event) => {
@@ -411,7 +411,7 @@ export function OrdersTableClient({
 
     return (
       <tr className="tasks-table__assignment-row orders-table__production-row">
-        <td colSpan={11}>
+        <td colSpan={12}>
           <div className="custom-production-panel">
             <form
               className="task-assignment-editor"
@@ -592,6 +592,7 @@ export function OrdersTableClient({
             <th>שם לקוח</th>
             <th>טלפון</th>
             <th>סוג הזמנה</th>
+            <th>מקור הזמנה</th>
             <th>תיאור מוצר</th>
             <th>סטטוס</th>
             <th>תאריך יצירה</th>
@@ -621,6 +622,25 @@ export function OrdersTableClient({
                 <td>
                   <div className="orders-table__type-cell">
                     <span>{displayOrderType(order)}</span>
+                  </div>
+                </td>
+                <td>
+                  <div className="order-payment-summary">
+                    <span>{order.orderSourceForDisplay}</span>
+                    {order.orderCreationRequestId ? (
+                      <span>בקשה: {order.orderCreationRequestId}</span>
+                    ) : null}
+                    {order.sourceQuoteDisplay ? (
+                      <span>הצעה: {order.sourceQuoteDisplay}</span>
+                    ) : null}
+                    {order.orderCreationRequestStatus ? (
+                      <span>סטטוס בקשה: {order.orderCreationRequestStatus}</span>
+                    ) : null}
+                    {order.orderCreationRequestError ? (
+                      <span className="order-invoice-actions__error">
+                        שגיאה: {order.orderCreationRequestError}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td className="orders-table__description-cell">

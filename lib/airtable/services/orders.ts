@@ -11,6 +11,7 @@ import type { RawOrderFields, RawTaskFields } from "../raw-types";
 import { airtableTables } from "../tables";
 import { createRecord, updateRecord } from "../write-client";
 import { getDocumentLines } from "./document-lines";
+import { getOrderCreationRequests } from "./order-creation-requests";
 
 export type CreateStandaloneOrderInput = {
   customerName: string;
@@ -345,7 +346,7 @@ function validateInput(input: CreateStandaloneOrderInput) {
 }
 
 export async function getOrders() {
-  const [records, taskRecords, documentLines] = await Promise.all([
+  const [records, taskRecords, documentLines, orderCreationRequests] = await Promise.all([
     selectRecords<RawOrderFields>(airtableTables.orders, {
       returnFieldsByFieldId: true,
     }),
@@ -354,13 +355,26 @@ export async function getOrders() {
       returnFieldsByFieldId: true,
     }),
     getDocumentLines(),
+    getOrderCreationRequests(),
   ]);
   const openTaskCountByOrderId = buildOpenTaskCountByOrderId(taskRecords);
   const linesByOrderId = groupDocumentLinesByOrderId(documentLines);
+  const requestsByCreatedOrderId = new Map(
+    records.map((record) => [
+      record.id,
+      orderCreationRequests.filter((request) =>
+        request.createdOrderIds.includes(record.id),
+      ),
+    ]),
+  );
 
   return records
     .map((record) => ({
-      ...mapOrder(record, linesByOrderId.get(record.id) ?? []),
+      ...mapOrder(
+        record,
+        linesByOrderId.get(record.id) ?? [],
+        requestsByCreatedOrderId.get(record.id) ?? [],
+      ),
       openTaskCount: openTaskCountByOrderId.get(record.id) ?? 0,
     }))
     .sort((a, b) => {

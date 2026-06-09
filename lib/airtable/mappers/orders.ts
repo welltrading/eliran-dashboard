@@ -4,6 +4,7 @@ import type {
   CustomProductionStatus,
   DocumentLine,
   Order,
+  OrderCreationRequest,
   OrderType,
 } from "@/lib/types";
 import type { RawOrderFields } from "../raw-types";
@@ -152,12 +153,29 @@ function orderTypeFromDocumentLines(documentLines: DocumentLine[]) {
   return lineType;
 }
 
+function orderCreationRequestForOrder(
+  orderId: string,
+  orderCreationRequests: OrderCreationRequest[],
+) {
+  return orderCreationRequests.find((request) =>
+    request.createdOrderIds.includes(orderId),
+  );
+}
+
 export function mapOrder(
   record: RawRecord,
   documentLines: DocumentLine[] = [],
+  orderCreationRequests: OrderCreationRequest[] = [],
 ): Order {
   const easyCountStatus = nullableTextValue(record.fields.fldws1tElgJlhMLR7);
   const documentLinesTotal = totalFromDocumentLines(documentLines);
+  const orderCreationRequest = orderCreationRequestForOrder(
+    record.id,
+    orderCreationRequests,
+  );
+  const sourceQuoteIds = orderCreationRequest?.quoteIds ?? [];
+  const sourceQuoteDisplay =
+    sourceQuoteIds.length > 0 ? sourceQuoteIds.join(", ") : null;
 
   return {
     id: record.id,
@@ -167,6 +185,17 @@ export function mapOrder(
     orderType: orderTypeValue(record.fields.flduurO6CcPQx6oya),
     status: textValue(record.fields.fldwvbnGd8e3PAU7d),
     createdAt: nullableTextValue(record.fields.flde2no9Qoof141vN),
+    orderCreationRequestId: orderCreationRequest?.id ?? null,
+    sourceQuoteIds,
+    sourceQuoteId: sourceQuoteIds[0] ?? null,
+    sourceQuoteDisplay,
+    orderCreatedFromRequest: Boolean(orderCreationRequest),
+    orderSourceForDisplay: orderCreationRequest
+      ? "נוצרה מבקשת הזמנה"
+      : "מקור לא ידוע / נוצרה ידנית",
+    orderCreationRequestStatus:
+      orderCreationRequest?.requestStatus ?? null,
+    orderCreationRequestError: orderCreationRequest?.error ?? null,
     // LEGACY_DISPLAY_FALLBACK_ONLY: retained for temporary display when an order has no document lines yet.
     totalPrice: numberValue(record.fields.flddZQjojnGZeZ5By),
     documentLines,

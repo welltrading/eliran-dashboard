@@ -262,6 +262,14 @@ export type Order = {
   orderType: OrderType;
   status: string;
   createdAt: string | null;
+  orderCreationRequestId: string | null;
+  sourceQuoteIds: string[];
+  sourceQuoteId: string | null;
+  sourceQuoteDisplay: string | null;
+  orderCreatedFromRequest: boolean;
+  orderSourceForDisplay: string;
+  orderCreationRequestStatus: string | null;
+  orderCreationRequestError: string | null;
   totalPrice: number;
   documentLines: DocumentLine[];
   totalFromDocumentLines: number;
