@@ -80,6 +80,12 @@ export type PendingPaymentApprovalTask = {
   customerName: string | null;
   phone: string | null;
   address: string | null;
+  completionImages: Array<{
+    id: string;
+    url: string;
+    filename?: string;
+    thumbnailUrl?: string;
+  }>;
   orderNumber: string | null;
   taskType: string | null;
   installerId: string;
@@ -257,6 +263,11 @@ export type Order = {
   status: string;
   createdAt: string | null;
   totalPrice: number;
+  documentLines: DocumentLine[];
+  totalFromDocumentLines: number;
+  advance60FromDocumentLines: number;
+  balance40FromDocumentLines: number;
+  orderTypeFromDocumentLines: string | null;
   paymentMode: string | null;
   advancePaymentAmount: number;
   remainingPaymentAmount: number;
@@ -304,6 +315,25 @@ export type OrderLine = {
   createdAt: string | null;
 };
 
+export type DocumentLine = {
+  id: string;
+  description: string;
+  displayDescription: string;
+  lineType: string | null;
+  documentType: string | null;
+  quoteIds: string[];
+  orderIds: string[];
+  productIds: string[];
+  quantity: number;
+  unitPrice: number;
+  discountPercent: number;
+  lineTotal: number;
+  exitLocation: string | null;
+  status: string | null;
+  inventoryMovementIds: string[];
+  createdAt: string | null;
+};
+
 export type InventoryItem = {
   id: string;
   productName: string;
@@ -333,6 +363,8 @@ export type InventoryMovement = {
   stockLocationIds: string[];
   orderLineIds: string[];
   orderLineLabels: string[];
+  documentLineIds: string[];
+  documentLineLabels: string[];
   relatedOrder: string | null;
   notes: string | null;
 };
@@ -406,6 +438,10 @@ export type Quote = {
   status: string;
   createdAt: string | null;
   totalPrice: number;
+  documentLines: DocumentLine[];
+  totalFromDocumentLines: number;
+  lineTypesFromDocumentLines: string[];
+  quoteTypeFromDocumentLines: string | null;
   ezDocUrl: string | null;
   leadSource: string | null;
   createOrderUrl: string | null;

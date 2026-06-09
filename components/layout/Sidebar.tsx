@@ -22,7 +22,7 @@ const navItems = [
   { href: "/quotes", label: "הצעות מחיר", icon: FileText },
   { href: "/orders", label: "הזמנות", icon: ClipboardList },
   { href: "/tasks", label: "משימות", icon: Hammer },
-  { href: "/order-lines", label: "שורות הזמנה", icon: ListOrdered },
+  { href: "/order-lines", label: "שורות מסמך", icon: ListOrdered },
   { href: "/inventory", label: "מלאי לפי מיקום", icon: Warehouse },
   { href: "/inventory/movements", label: "תנועות מלאי", icon: Boxes },
   { href: "/approvals", label: "אישורי ביצוע", icon: CheckCircle2 },

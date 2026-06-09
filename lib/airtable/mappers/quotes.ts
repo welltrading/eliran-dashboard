@@ -1,5 +1,5 @@
 import "server-only";
-import type { Quote } from "@/lib/types";
+import type { DocumentLine, Quote } from "@/lib/types";
 import type { RawQuoteFields } from "../raw-types";
 import { linkedRecordIds, numberValue, quoteType } from "./shared";
 
@@ -63,7 +63,46 @@ function nullableNumberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-export function mapQuote(record: RawRecord): Quote {
+function uniqueTextValues(values: Array<string | null>) {
+  return Array.from(
+    new Set(values.flatMap((value) => (value?.trim() ? [value.trim()] : []))),
+  );
+}
+
+function totalFromDocumentLines(documentLines: DocumentLine[]) {
+  return documentLines.reduce((total, line) => total + line.lineTotal, 0);
+}
+
+function quoteTypeFromDocumentLines(documentLines: DocumentLine[]) {
+  const lineTypes = uniqueTextValues(
+    documentLines.map((line) => line.lineType ?? line.documentType),
+  );
+
+  if (lineTypes.length === 0) {
+    return null;
+  }
+
+  if (lineTypes.length > 1) {
+    return "מעורב";
+  }
+
+  const [lineType] = lineTypes;
+
+  if (lineType === "מוצר מהמלאי") {
+    return "סטנדרטי";
+  }
+
+  return lineType;
+}
+
+export function mapQuote(
+  record: RawRecord,
+  documentLines: DocumentLine[] = [],
+): Quote {
+  const lineTypesFromDocumentLines = uniqueTextValues(
+    documentLines.map((line) => line.lineType),
+  );
+
   return {
     id: record.id,
     quoteNumber:
@@ -75,12 +114,18 @@ export function mapQuote(record: RawRecord): Quote {
     quoteType: quoteType(textValue(record.fields.fldN4EILKJZND3FOf)),
     status: textValue(record.fields.fldzlKcHkLftZVxFM),
     createdAt: nullableTextValue(record.fields.fldF5hky2jB0vs5GY),
+    // LEGACY_DISPLAY_FALLBACK_ONLY: retained for temporary display when a quote has no document lines yet.
     totalPrice: numberValue(record.fields.fldHnLVvPoqT0VHvA),
+    documentLines,
+    totalFromDocumentLines: totalFromDocumentLines(documentLines),
+    lineTypesFromDocumentLines,
+    quoteTypeFromDocumentLines: quoteTypeFromDocumentLines(documentLines),
     ezDocUrl: urlValue(record.fields.fldh8tz1xgQNCNGgH),
     leadSource: nullableTextValue(record.fields.fldOY3RLPblIPoz60),
     createOrderUrl:
       urlValue(record.fields.fldgzZ3UQE6FOil0T) ??
       urlValue(record.fields.fldv6P5NJkh207aJR),
+    // LEGACY_DISPLAY_FALLBACK_ONLY: old single-product fields remain available for screens not yet refactored.
     productIds: linkedRecordIds(record.fields.fldPt89KYMnfPHc1X),
     customProductDescription: nullableTextValue(record.fields.fldAD8QmPrnCbZhu2),
     customSpecDescription: nullableTextValue(record.fields.fldzFSTLmY8eMk2zF),

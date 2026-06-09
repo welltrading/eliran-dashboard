@@ -6,6 +6,7 @@ export type AirtableAttachment = {
   id?: unknown;
   filename?: unknown;
   url?: unknown;
+  thumbnails?: unknown;
 };
 
 export type RawCustomerFields = {
@@ -47,6 +48,7 @@ export type RawInstallerTaskFields = {
   fldnW9tNzTBwHeB5k?: unknown;
   fld6yO2AJBtvihM9W?: unknown;
   fldzHUUvieCC7sZqz?: unknown;
+  fldl3KooMqphzRR3I?: unknown;
 };
 
 export type RawExecutionApprovalFields = {
@@ -54,6 +56,7 @@ export type RawExecutionApprovalFields = {
   fldpAZh1st8qRqA7n?: unknown;
   fld82nUwa5hZGSDlF?: unknown;
   fldTjEOiF0qd1FgEd?: unknown;
+  fldl3KooMqphzRR3I?: unknown;
   fldOCqFBKS8KuXSSV?: unknown;
   fldmg9acRqIp0zim0?: unknown;
   fldxJM4QXKh7kitBM?: unknown;
@@ -64,6 +67,7 @@ export type RawExecutionApprovalFields = {
   fldDLbU0YVyUJN3WV?: unknown;
   fld2wVyMe3wyhYsqK?: unknown;
   fldmOfBYtD9CjxDx6?: unknown;
+  fld0U4DIFVIpmVfVS?: unknown;
 };
 
 export type RawInstallerRateFields = {
@@ -137,6 +141,24 @@ export type RawOrderLineFields = {
   fldhCTBK9KWOQgZrg?: unknown;
 };
 
+export type RawDocumentLineFields = {
+  fldc33QppEyN8Yaxq?: unknown;
+  fldAoGQVj0sylIUAr?: unknown;
+  fldtv0UmzABrZ0OgI?: unknown;
+  fldLfzqMk98VZmts3?: unknown;
+  fld9OqOt6TCFsaHPW?: unknown;
+  fldaxQ0Ko91cTOTBb?: unknown;
+  fldDTYi0DZyEplom6?: unknown;
+  fldgNmPUYcoFHatPu?: unknown;
+  fld3qg1JkrUX5iTaM?: unknown;
+  fldDsTolgtpHFWkP1?: unknown;
+  fldyKIV6tKKkqT2jn?: unknown;
+  fldPbgcN4NvRtRMgp?: unknown;
+  fld5o465AG04fQaxi?: unknown;
+  fldegUuhoVtTLCMRa?: unknown;
+  fldsdyswewYXl88g6?: unknown;
+};
+
 export type RawInventoryFields = {
   fldYboj1U8ZHJK6aq?: unknown;
   fldHUiTkn1TFdW9n4?: unknown;
@@ -160,6 +182,7 @@ export type RawInventoryMovementFields = {
   fldFqsW6nY2Q5Guvd?: unknown;
   fldtsmbAgTKPc7kUj?: unknown;
   fldModhBcaJqCP6na?: unknown;
+  fldaNMYaxrLipGtw5?: unknown;
   fldY3lYOKJbW1csjM?: unknown;
   fldoQUdwvZUId6wmd?: unknown;
   fld2R7ECUE1z42DJw?: unknown;

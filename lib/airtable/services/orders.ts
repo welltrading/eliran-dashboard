@@ -1,6 +1,7 @@
 import "server-only";
 import type {
   CustomProductionStatus,
+  DocumentLine,
   OrderStatus,
   OrderType,
 } from "@/lib/types";
@@ -9,6 +10,7 @@ import { mapOrder } from "../mappers/orders";
 import type { RawOrderFields, RawTaskFields } from "../raw-types";
 import { airtableTables } from "../tables";
 import { createRecord, updateRecord } from "../write-client";
+import { getDocumentLines } from "./document-lines";
 
 export type CreateStandaloneOrderInput = {
   customerName: string;
@@ -189,6 +191,20 @@ function buildOpenTaskCountByOrderId(tasks: MinimalTaskRecord[]) {
   return counts;
 }
 
+function groupDocumentLinesByOrderId(documentLines: DocumentLine[]) {
+  const linesByOrderId = new Map<string, DocumentLine[]>();
+
+  documentLines.forEach((line) => {
+    line.orderIds.forEach((orderId) => {
+      const existingLines = linesByOrderId.get(orderId) ?? [];
+      existingLines.push(line);
+      linesByOrderId.set(orderId, existingLines);
+    });
+  });
+
+  return linesByOrderId;
+}
+
 function normalizeOptionalNumber(value: string | number | null | undefined) {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -329,7 +345,7 @@ function validateInput(input: CreateStandaloneOrderInput) {
 }
 
 export async function getOrders() {
-  const [records, taskRecords] = await Promise.all([
+  const [records, taskRecords, documentLines] = await Promise.all([
     selectRecords<RawOrderFields>(airtableTables.orders, {
       returnFieldsByFieldId: true,
     }),
@@ -337,12 +353,14 @@ export async function getOrders() {
       fields: ["fldJQBgJQDdtQFvML", "fldAP5bP6n8okIqec", "fld00gbAzyZVvDWOt"],
       returnFieldsByFieldId: true,
     }),
+    getDocumentLines(),
   ]);
   const openTaskCountByOrderId = buildOpenTaskCountByOrderId(taskRecords);
+  const linesByOrderId = groupDocumentLinesByOrderId(documentLines);
 
   return records
     .map((record) => ({
-      ...mapOrder(record),
+      ...mapOrder(record, linesByOrderId.get(record.id) ?? []),
       openTaskCount: openTaskCountByOrderId.get(record.id) ?? 0,
     }))
     .sort((a, b) => {

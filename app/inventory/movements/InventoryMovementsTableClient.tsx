@@ -14,6 +14,8 @@ export type InventoryMovementTableItem = {
   status: string | null;
   orderLineIds: string[];
   orderLineLabels: string[];
+  documentLineIds: string[];
+  documentLineLabels: string[];
   relatedOrder: string | null;
 };
 
@@ -134,7 +136,7 @@ export function InventoryMovementsTableClient({
                 <th>כמות</th>
                 <th>כמות מחושבת</th>
                 <th>סטטוס</th>
-                <th>שורת הזמנה</th>
+                <th>שורת מסמך</th>
                 <th>הזמנה</th>
               </tr>
             </thead>
@@ -156,7 +158,7 @@ export function InventoryMovementsTableClient({
                   <td>{movement.quantity}</td>
                   <td>{movement.calculatedQuantity}</td>
                   <td>{movement.status ?? "-"}</td>
-                  <td>{movement.orderLineLabels.join(", ") || "-"}</td>
+                  <td>{movement.documentLineLabels.join(", ") || "-"}</td>
                   <td>{movement.relatedOrder ?? "-"}</td>
                 </tr>
               ))}

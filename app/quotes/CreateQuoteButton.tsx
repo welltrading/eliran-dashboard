@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+  isDocumentLinesWriteGuardEnabled,
+} from "@/lib/safety-guard";
 
 type CreateQuoteButtonProps = {
   recordId: string;
@@ -84,6 +88,19 @@ export function CreateQuoteButton({
           : "שגיאה ביצירת הצעת מחיר.",
       );
     }
+  }
+
+  if (isDocumentLinesWriteGuardEnabled()) {
+    return (
+      <div className="quote-action">
+        <button className="quote-action__button" type="button" disabled>
+          יצירת הצעת מחיר
+        </button>
+        <span className="quote-action__message">
+          {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
+        </span>
+      </div>
+    );
   }
 
   return (

@@ -1,5 +1,5 @@
 import { getInventoryMovements } from "@/lib/airtable/services/inventory-movements";
-import { getOrderLines } from "@/lib/airtable/services/order-lines";
+import { getDocumentLines } from "@/lib/airtable/services/document-lines";
 import {
   buildInventoryValidation,
   getInventoryByLocation,
@@ -28,16 +28,16 @@ function formatDate(value: string | null) {
 }
 
 export default async function InventoryMovementsPage() {
-  const [movements, inventory, orderLines] = await Promise.all([
+  const [movements, inventory, documentLines] = await Promise.all([
     getInventoryMovements(),
     getInventoryByLocation(),
-    getOrderLines(),
+    getDocumentLines(),
   ]);
   const validation = buildInventoryValidation(inventory, movements);
-  const orderLineLabelById = new Map(
-    orderLines.map((line) => [
+  const documentLineLabelById = new Map(
+    documentLines.map((line) => [
       line.id,
-      line.linkedOrderNumber ? String(line.linkedOrderNumber) : "שורת הזמנה",
+      line.displayDescription || line.description || "שורת מסמך",
     ]),
   );
   const tableMovements: InventoryMovementTableItem[] = movements.map((movement) => ({
@@ -52,7 +52,12 @@ export default async function InventoryMovementsPage() {
     status: movement.status,
     orderLineIds: movement.orderLineIds,
     orderLineLabels: movement.orderLineIds.map(
-      (orderLineId) => orderLineLabelById.get(orderLineId) ?? "שורת הזמנה",
+      (orderLineId) => documentLineLabelById.get(orderLineId) ?? "שורת הזמנה",
+    ),
+    documentLineIds: movement.documentLineIds,
+    documentLineLabels: movement.documentLineIds.map(
+      (documentLineId) =>
+        documentLineLabelById.get(documentLineId) ?? "שורת מסמך",
     ),
     relatedOrder: movement.relatedOrder,
   }));
@@ -95,7 +100,7 @@ export default async function InventoryMovementsPage() {
                   <span>כמות {movement.quantity}</span>
                   <span>מחושבת {movement.calculatedQuantity}</span>
                   <span>
-                    שורה {movement.orderLineLabels.join(", ") || movement.relatedOrder || "-"}
+                    שורה {movement.documentLineLabels.join(", ") || movement.relatedOrder || "-"}
                   </span>
                 </div>
               ))}

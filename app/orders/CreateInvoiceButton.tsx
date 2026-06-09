@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import type { OrderType, PaymentStage } from "@/lib/types";
+import {
+  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+  isDocumentLinesWriteGuardEnabled,
+} from "@/lib/safety-guard";
 
 type CreateInvoiceButtonProps = {
   recordId: string;
@@ -95,6 +99,19 @@ export function CreateInvoiceButton({
           : "שגיאה בהפקת חשבונית מס קבלה.",
       );
     }
+  }
+
+  if (isDocumentLinesWriteGuardEnabled()) {
+    return (
+      <div className="quote-action">
+        <button className="quote-action__button" type="button" disabled>
+          {createLabel}
+        </button>
+        <span className="quote-action__message">
+          {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
+        </span>
+      </div>
+    );
   }
 
   return (

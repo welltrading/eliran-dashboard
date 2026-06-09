@@ -90,18 +90,67 @@ function formatOptionalCurrency(value: number) {
   return formatCurrency(value);
 }
 
+function hasDocumentLines(order: Order) {
+  return order.documentLines.length > 0;
+}
+
+function displayOrderType(order: Order) {
+  // LEGACY_DISPLAY_FALLBACK_ONLY: use the old order type only when no document lines exist yet.
+  return order.orderTypeFromDocumentLines ?? order.orderType;
+}
+
+function displayOrderTotal(order: Order) {
+  if (hasDocumentLines(order)) {
+    return order.totalFromDocumentLines;
+  }
+
+  // LEGACY_DISPLAY_FALLBACK_ONLY: temporary display fallback for unmigrated order records.
+  return order.totalPrice;
+}
+
+function displayAdvance60(order: Order) {
+  if (hasDocumentLines(order)) {
+    return order.advance60FromDocumentLines;
+  }
+
+  // LEGACY_DISPLAY_FALLBACK_ONLY: temporary display fallback for unmigrated order records.
+  return order.advancePaymentAmount;
+}
+
+function displayBalance40(order: Order) {
+  if (hasDocumentLines(order)) {
+    return order.balance40FromDocumentLines;
+  }
+
+  // LEGACY_DISPLAY_FALLBACK_ONLY: temporary display fallback for unmigrated order records.
+  return order.remainingPaymentAmount;
+}
+
+function displayDocumentLineDescription(order: Order) {
+  if (!hasDocumentLines(order)) {
+    return null;
+  }
+
+  return order.documentLines.slice(0, 3).map((line) => {
+    const title = line.displayDescription || line.description || "שורת מסמך";
+    const quantity = line.quantity ? ` × ${line.quantity}` : "";
+    return `${title}${quantity} · ${formatCurrency(line.lineTotal)}`;
+  });
+}
+
 function firstPaymentStage(order: Order): PaymentStage {
   return order.paymentMode?.includes("מלא") ? "full_payment" : "advance_60";
 }
 
 function firstPaymentAmount(order: Order) {
   return firstPaymentStage(order) === "full_payment"
-    ? order.totalPrice
-    : order.advancePaymentAmount;
+    ? displayOrderTotal(order)
+    : displayAdvance60(order);
 }
 
 function isCustomProductionOrder(order: Order) {
-  return order.orderType === "ייצור אישי" || order.orderType === "מעורב";
+  const type = displayOrderType(order);
+  return type === "ייצור אישי" || type === "מעורב";
 }
 
 function productionFilterMatches(order: Order, filter: ProductionFilter) {
@@ -557,6 +606,7 @@ export function OrdersTableClient({
             const initialPaymentStage = firstPaymentStage(order);
             const showFinalInvoice = initialPaymentStage === "advance_60";
             const linkedTaskCount = order.openTaskCount;
+            const documentLineDescriptions = displayDocumentLineDescription(order);
             const taskIndicator =
               linkedTaskCount > 0
                 ? `משימות פתוחות: ${linkedTaskCount}`
@@ -570,16 +620,31 @@ export function OrdersTableClient({
                 <td><PhoneText value={order.phone} /></td>
                 <td>
                   <div className="orders-table__type-cell">
-                    <span>{order.orderType}</span>
+                    <span>{displayOrderType(order)}</span>
                   </div>
                 </td>
                 <td className="orders-table__description-cell">
                   <div className="orders-table__description-content">
-                    {order.productDescription ? (
+                    {documentLineDescriptions ? (
+                      <div className="order-payment-summary">
+                        {documentLineDescriptions.map((lineDescription) => (
+                          <span key={lineDescription}>{lineDescription}</span>
+                        ))}
+                        {order.documentLines.length > documentLineDescriptions.length ? (
+                          <span>
+                            ועוד {order.documentLines.length - documentLineDescriptions.length} שורות
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : order.productDescription ? (
+                      /* LEGACY_DISPLAY_FALLBACK_ONLY: old product description is shown only when no document lines exist. */
                       <div style={{ whiteSpace: "pre-line" }}>{order.productDescription}</div>
                     ) : (
                       "-"
                     )}
+                    {!hasDocumentLines(order) ? (
+                      <span className="badge badge--warning">אין שורות מסמך</span>
+                    ) : null}
                   </div>
                   <div className="orders-table__row-actions">
                     <span
@@ -628,12 +693,12 @@ export function OrdersTableClient({
                 </td>
                 <td>{order.status || "-"}</td>
                 <td>{formatDate(order.createdAt)}</td>
-                <td>{formatCurrency(order.totalPrice)}</td>
+                <td>{formatCurrency(displayOrderTotal(order))}</td>
                 <td>
                   <div className="order-payment-summary">
                     <span>{order.paymentMode || "-"}</span>
-                    <span>מקדמה: {formatOptionalCurrency(order.advancePaymentAmount)}</span>
-                    <span>יתרה: {formatOptionalCurrency(order.remainingPaymentAmount)}</span>
+                    <span>מקדמה 60%: {formatOptionalCurrency(displayAdvance60(order))}</span>
+                    <span>יתרה 40%: {formatOptionalCurrency(displayBalance40(order))}</span>
                   </div>
                 </td>
                 <td>{order.shortNotes ?? "-"}</td>
@@ -677,7 +742,7 @@ export function OrdersTableClient({
                       <div className="order-invoice-actions__item">
                         <div className="order-invoice-actions__meta">
                           <strong>יתרה 40%</strong>
-                          <span>{formatOptionalCurrency(order.remainingPaymentAmount)}</span>
+                          <span>{formatOptionalCurrency(displayBalance40(order))}</span>
                           {order.easyCountFinalDocumentNumber ? (
                           <span>מסמך {order.easyCountFinalDocumentNumber}</span>
                         ) : null}

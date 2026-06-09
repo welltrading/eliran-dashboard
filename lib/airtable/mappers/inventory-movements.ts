@@ -75,6 +75,8 @@ export function mapInventoryMovement(record: RawRecord): InventoryMovement {
     stockLocationIds: linkedRecordIds(record.fields.fldtsmbAgTKPc7kUj),
     orderLineIds: linkedRecordIds(record.fields.fldModhBcaJqCP6na),
     orderLineLabels: [],
+    documentLineIds: linkedRecordIds(record.fields.fldaNMYaxrLipGtw5),
+    documentLineLabels: [],
     relatedOrder: nullableTextValue(record.fields.fldY3lYOKJbW1csjM),
     notes: nullableTextValue(record.fields.fldQ8umCODTY80hBU),
   };

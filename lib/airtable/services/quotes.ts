@@ -1,9 +1,11 @@
 import "server-only";
+import type { DocumentLine } from "@/lib/types";
 import { selectRecords } from "../client";
 import { mapQuote } from "../mappers/quotes";
 import type { RawQuoteFields } from "../raw-types";
 import { airtableTables } from "../tables";
 import { createRecord } from "../write-client";
+import { getDocumentLines } from "./document-lines";
 
 type StandardCreateQuoteInput = {
   quoteType: "סטנדרטי";
@@ -71,6 +73,20 @@ type CreatedQuoteFields = {
   fldGmiTEukzdMMRLk?: string;
   fldQWyr3BZl4bxTBb?: string;
 };
+
+function groupDocumentLinesByQuoteId(documentLines: DocumentLine[]) {
+  const linesByQuoteId = new Map<string, DocumentLine[]>();
+
+  documentLines.forEach((line) => {
+    line.quoteIds.forEach((quoteId) => {
+      const existingLines = linesByQuoteId.get(quoteId) ?? [];
+      existingLines.push(line);
+      linesByQuoteId.set(quoteId, existingLines);
+    });
+  });
+
+  return linesByQuoteId;
+}
 
 const leadSources = ["מדרג", "מקצוענים", "גוגל", "המלצה", "אחר"];
 const measurementRequiredOptions = ["כן", "לא"];
@@ -269,12 +285,17 @@ function validateCustomCreateQuoteInput(input: CustomCreateQuoteInput) {
 }
 
 export async function getQuotes() {
-  const records = await selectRecords<RawQuoteFields>(airtableTables.quotes, {
-    cache: "no-store",
-    returnFieldsByFieldId: true,
-  });
+  const [records, documentLines] = await Promise.all([
+    selectRecords<RawQuoteFields>(airtableTables.quotes, {
+      cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    getDocumentLines(),
+  ]);
+  const linesByQuoteId = groupDocumentLinesByQuoteId(documentLines);
+
   return records
-    .map(mapQuote)
+    .map((record) => mapQuote(record, linesByQuoteId.get(record.id) ?? []))
     .sort((a, b) => Number(b.quoteNumber) - Number(a.quoteNumber));
 }
 

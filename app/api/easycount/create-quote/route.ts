@@ -3,6 +3,11 @@ import { getAirtableConfig } from "@/lib/airtable/config";
 import { mapQuote } from "@/lib/airtable/mappers/quotes";
 import type { RawQuoteFields } from "@/lib/airtable/raw-types";
 import { airtableTables } from "@/lib/airtable/tables";
+import {
+  DOCUMENT_LINES_WRITE_GUARD_ERROR,
+  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+  isDocumentLinesWriteGuardEnabled,
+} from "@/lib/safety-guard";
 
 type CreateQuoteRequest = {
   record_id?: unknown;
@@ -54,6 +59,17 @@ async function getQuoteEzDocUrl(recordId: string) {
 }
 
 export async function POST(request: Request) {
+  if (isDocumentLinesWriteGuardEnabled()) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+        details: DOCUMENT_LINES_WRITE_GUARD_ERROR,
+      },
+      { status: 423 },
+    );
+  }
+
   let body: CreateQuoteRequest;
 
   try {

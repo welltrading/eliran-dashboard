@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import { getQuoteById } from "@/lib/airtable/services/quotes";
-import { getProducts } from "@/lib/airtable/services/products";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { CreateOrderFormClient } from "./CreateOrderFormClient";
+import { DOCUMENT_LINES_WRITE_GUARD_MESSAGE } from "@/lib/safety-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +14,7 @@ type CreateOrderPageProps = {
 
 export default async function CreateOrderPage({ params }: CreateOrderPageProps) {
   const { quoteId } = await params;
-  const [quote, products] = await Promise.all([
-    getQuoteById(quoteId),
-    getProducts(),
-  ]);
+  const quote = await getQuoteById(quoteId);
 
   if (!quote) {
     notFound();
@@ -33,7 +29,14 @@ export default async function CreateOrderPage({ params }: CreateOrderPageProps) 
 
       <Card>
         <div className="card__body">
-          <CreateOrderFormClient quote={quote} products={products} />
+          <div className="placeholder">
+            <div>
+              <h2>{DOCUMENT_LINES_WRITE_GUARD_MESSAGE}</h2>
+              <p>
+                יצירת הזמנה מהצעה תיבנה מחדש דרך בקשות יצירת הזמנה ושורות מסמך.
+              </p>
+            </div>
+          </div>
         </div>
       </Card>
     </div>

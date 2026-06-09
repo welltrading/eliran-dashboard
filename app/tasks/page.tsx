@@ -11,7 +11,7 @@ import { TasksTableClient } from "./TasksTableClient";
 export const dynamic = "force-dynamic";
 
 const AIRTABLE_TASKS_TABLE_URL =
-  "https://airtable.com/app77CdzKEqLlhZ8d/tblsodUowDPPiOcCk";
+  "https://airtable.com/apphmGmx3hhLZI8AK/tblsodUowDPPiOcCk";
 
 type TasksPageProps = {
   searchParams?: Promise<{

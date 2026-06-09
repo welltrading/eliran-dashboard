@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { OrderStatus, OrderType } from "@/lib/types";
+import { DOCUMENT_LINES_WRITE_GUARD_MESSAGE } from "@/lib/safety-guard";
 import { createStandaloneOrderAction } from "./actions";
 
 type CreateOrderState = {
@@ -138,15 +139,15 @@ export function CreateStandaloneOrderFormClient() {
           <button
             className="primary-action"
             type="button"
-            onClick={() => {
-              setResult(null);
-              setIsOpen((current) => !current);
-            }}
-            disabled={isPending}
+            onClick={() => undefined}
+            disabled
           >
             צור הזמנה חדשה
           </button>
         </div>
+      </div>
+      <div className="task-update-error" role="status">
+        {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
       </div>
 
       {result ? (

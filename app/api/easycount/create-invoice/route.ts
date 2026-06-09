@@ -4,6 +4,11 @@ import { mapOrder } from "@/lib/airtable/mappers/orders";
 import type { RawOrderFields } from "@/lib/airtable/raw-types";
 import { airtableTables } from "@/lib/airtable/tables";
 import type { Order, OrderType, PaymentStage } from "@/lib/types";
+import {
+  DOCUMENT_LINES_WRITE_GUARD_ERROR,
+  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+  isDocumentLinesWriteGuardEnabled,
+} from "@/lib/safety-guard";
 
 type CreateInvoiceRequest = {
   record_id?: unknown;
@@ -90,6 +95,17 @@ function invoiceAmountForStage(order: Order, paymentStage: PaymentStage) {
 }
 
 export async function POST(request: Request) {
+  if (isDocumentLinesWriteGuardEnabled()) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+        details: DOCUMENT_LINES_WRITE_GUARD_ERROR,
+      },
+      { status: 423 },
+    );
+  }
+
   let body: CreateInvoiceRequest;
 
   try {

@@ -1,4 +1,4 @@
-import { getOrderLines } from "@/lib/airtable/services/order-lines";
+import { getDocumentLines } from "@/lib/airtable/services/document-lines";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 
@@ -27,35 +27,41 @@ function formatCurrency(value: number) {
 }
 
 export default async function OrderLinesPage() {
-  const orderLines = await getOrderLines();
+  const documentLines = await getDocumentLines();
 
   return (
     <div className="page page--wide">
-      <PageHeader title="שורות הזמנה" description="פירוט פריטים ושירותים בתוך הזמנות." />
+      <PageHeader title="שורות מסמך" description="פירוט פריטים ושירותים מתוך טבלת שורות מסמך." />
       <Card>
         <div className="table-wrap">
-          {orderLines.length > 0 ? (
+          {documentLines.length > 0 ? (
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>מספר הזמנה</th>
-                  <th>מוצר / תיאור</th>
+                  <th>סוג מסמך</th>
+                  <th>סוג שורה</th>
+                  <th>תיאור לתצוגה</th>
                   <th>כמות</th>
-                  <th>מחיר כולל</th>
-                  <th>מחיר לפני מע״מ</th>
-                  <th>סוג תנועת מלאי</th>
+                  <th>מחיר יחידה</th>
+                  <th>הנחה</th>
+                  <th>סה״כ שורה</th>
+                  <th>מיקום יציאה</th>
+                  <th>סטטוס</th>
                   <th>תאריך יצירה</th>
                 </tr>
               </thead>
               <tbody>
-                {orderLines.map((line, index) => (
-                  <tr key={`${line.linkedOrderNumber ?? "line"}-${index}`}>
-                    <td>{line.linkedOrderNumber ?? "-"}</td>
-                    <td>{line.productDescription || "-"}</td>
+                {documentLines.map((line, index) => (
+                  <tr key={`${line.id}-${index}`}>
+                    <td>{line.documentType ?? "-"}</td>
+                    <td>{line.lineType ?? "-"}</td>
+                    <td>{line.displayDescription || line.description || "-"}</td>
                     <td>{line.quantity}</td>
-                    <td>{formatCurrency(line.lineTotalPrice)}</td>
-                    <td>{formatCurrency(line.priceBeforeVat)}</td>
-                    <td>{line.inventoryMovementType ?? "-"}</td>
+                    <td>{formatCurrency(line.unitPrice)}</td>
+                    <td>{line.discountPercent ? `${line.discountPercent * 100}%` : "-"}</td>
+                    <td>{formatCurrency(line.lineTotal)}</td>
+                    <td>{line.exitLocation ?? "-"}</td>
+                    <td>{line.status ?? "-"}</td>
                     <td>{formatDate(line.createdAt)}</td>
                   </tr>
                 ))}
@@ -64,8 +70,8 @@ export default async function OrderLinesPage() {
           ) : (
             <div className="card__body placeholder">
               <div>
-                <h2>אין שורות הזמנה להצגה</h2>
-                <p>כאשר יהיו רשומות בטבלת שורות ההזמנה ב-Airtable, הן יוצגו כאן לקריאה בלבד.</p>
+                <h2>אין שורות מסמך להצגה</h2>
+                <p>כאשר יהיו רשומות בטבלת שורות מסמך ב-Airtable, הן יוצגו כאן לקריאה בלבד.</p>
               </div>
             </div>
           )}

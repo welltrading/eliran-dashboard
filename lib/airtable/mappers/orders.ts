@@ -2,6 +2,7 @@ import "server-only";
 import type {
   AirtableAttachment,
   CustomProductionStatus,
+  DocumentLine,
   Order,
   OrderType,
 } from "@/lib/types";
@@ -115,8 +116,48 @@ function linkedRecordIds(value: unknown) {
     : [];
 }
 
-export function mapOrder(record: RawRecord): Order {
+function uniqueTextValues(values: Array<string | null>) {
+  return Array.from(
+    new Set(values.flatMap((value) => (value?.trim() ? [value.trim()] : []))),
+  );
+}
+
+function totalFromDocumentLines(documentLines: DocumentLine[]) {
+  return documentLines.reduce((total, line) => total + line.lineTotal, 0);
+}
+
+function orderTypeFromDocumentLines(documentLines: DocumentLine[]) {
+  const lineTypes = uniqueTextValues(
+    documentLines.map((line) => line.lineType ?? line.documentType),
+  );
+
+  if (lineTypes.length === 0) {
+    return null;
+  }
+
+  if (lineTypes.length > 1) {
+    return "מעורב";
+  }
+
+  const [lineType] = lineTypes;
+
+  if (lineType === "ייצור אישי") {
+    return "ייצור אישי";
+  }
+
+  if (lineType === "סטנדרטי" || lineType === "מוצר מהמלאי") {
+    return "סטנדרטי";
+  }
+
+  return lineType;
+}
+
+export function mapOrder(
+  record: RawRecord,
+  documentLines: DocumentLine[] = [],
+): Order {
   const easyCountStatus = nullableTextValue(record.fields.fldws1tElgJlhMLR7);
+  const documentLinesTotal = totalFromDocumentLines(documentLines);
 
   return {
     id: record.id,
@@ -126,8 +167,15 @@ export function mapOrder(record: RawRecord): Order {
     orderType: orderTypeValue(record.fields.flduurO6CcPQx6oya),
     status: textValue(record.fields.fldwvbnGd8e3PAU7d),
     createdAt: nullableTextValue(record.fields.flde2no9Qoof141vN),
+    // LEGACY_DISPLAY_FALLBACK_ONLY: retained for temporary display when an order has no document lines yet.
     totalPrice: numberValue(record.fields.flddZQjojnGZeZ5By),
+    documentLines,
+    totalFromDocumentLines: documentLinesTotal,
+    advance60FromDocumentLines: documentLinesTotal * 0.6,
+    balance40FromDocumentLines: documentLinesTotal * 0.4,
+    orderTypeFromDocumentLines: orderTypeFromDocumentLines(documentLines),
     paymentMode: nullableTextValue(record.fields.fldPN0eZPJuSJSh8o),
+    // LEGACY_DISPLAY_FALLBACK_ONLY: old payment fields remain display fallback only.
     advancePaymentAmount: numberValue(record.fields.fldoBnRqI3ZTZXorO),
     remainingPaymentAmount: numberValue(record.fields.fldOAbx5iIaFAihvt),
     easyCountDocumentId: nullableTextValue(record.fields.fldRZSAngZ2MzRg9v),
@@ -142,6 +190,7 @@ export function mapOrder(record: RawRecord): Order {
     easyCountFinalError: nullableTextValue(record.fields.fldT6fSDKdVbhcPmw),
     invoiceReceiptRequested: booleanValue(record.fields.fldUHtJ82z3U2eG6W),
     shortNotes: nullableTextValue(record.fields.fldFRK1Kz26jE99xR),
+    // LEGACY_DISPLAY_FALLBACK_ONLY: old order-line links remain available until write flows are migrated.
     orderLineIds: Array.isArray(record.fields.fldIJzxGrwPaDNACs)
       ? record.fields.fldIJzxGrwPaDNACs.filter((item): item is string => typeof item === "string")
       : [],

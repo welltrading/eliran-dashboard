@@ -3,6 +3,10 @@
 import { type FormEvent, useMemo, useState, useTransition } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal } from "lucide-react";
 import type { StockStatus } from "@/lib/types";
+import {
+  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+  isDocumentLinesWriteGuardEnabled,
+} from "@/lib/safety-guard";
 import { createInventoryMovementAction } from "./actions";
 
 export type InventoryTableItem = {
@@ -193,6 +197,18 @@ export function InventoryTableClient({
 
   function submitMovement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isDocumentLinesWriteGuardEnabled()) {
+      setResult({
+        ok: false,
+        message: DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+        errors: [
+          "עדכון מלאי ידני מושהה עד שחיבור המלאי למודל שורות מסמך יושלם.",
+        ],
+      });
+      return;
+    }
+
     setResult(null);
 
     startTransition(async () => {
@@ -220,9 +236,7 @@ export function InventoryTableClient({
           <div className="inventory-section-heading">
             <h2>עדכון מלאי</h2>
             <p>
-              {isAdjustment
-                ? "התאמה בטוחה מחשבת פער ורושמת כניסה או יציאה רק על ההפרש."
-                : "רישום תנועה חדשה יעדכן את יתרות המלאי דרך מנגנון Airtable הקיים."}
+              {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
             </p>
           </div>
 
@@ -316,12 +330,12 @@ export function InventoryTableClient({
           </div>
 
           <div className="inventory-movement-form__actions">
-            <button className="primary-action" disabled={isPending} type="submit">
-              {isPending
-                ? "מעדכן..."
-                : isAdjustment
-                  ? "רשום התאמה בטוחה"
-                  : "רשום תנועת מלאי"}
+            <button
+              className="primary-action"
+              disabled={isPending || isDocumentLinesWriteGuardEnabled()}
+              type="submit"
+            >
+              {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
             </button>
           </div>
 
