@@ -334,6 +334,19 @@ export type DocumentLine = {
   createdAt: string | null;
 };
 
+export type OrderCreationRequest = {
+  id: string;
+  quoteIds: string[];
+  paymentType: string | null;
+  paymentMethod: string | null;
+  source: string | null;
+  standardExitLocation: string | null;
+  requestStatus: string | null;
+  createdOrderIds: string[];
+  error: string | null;
+  notes: string | null;
+};
+
 export type InventoryItem = {
   id: string;
   productName: string;
@@ -458,4 +471,9 @@ export type Quote = {
   dismantlingOption: string | null;
   measurementRequired: string | null;
   createdOrderIds: string[];
+  orderCreationRequests: OrderCreationRequest[];
+  hasOpenOrderCreationRequest: boolean;
+  createdOrderId: string | null;
+  orderCreationRequestStatusForDisplay: string;
+  orderCreationRequestError: string | null;
 };

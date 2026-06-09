@@ -1,5 +1,5 @@
 import "server-only";
-import type { DocumentLine, Quote } from "@/lib/types";
+import type { DocumentLine, OrderCreationRequest, Quote } from "@/lib/types";
 import type { RawQuoteFields } from "../raw-types";
 import { linkedRecordIds, numberValue, quoteType } from "./shared";
 
@@ -95,13 +95,76 @@ function quoteTypeFromDocumentLines(documentLines: DocumentLine[]) {
   return lineType;
 }
 
+function hasOpenOrderCreationRequest(
+  orderCreationRequests: OrderCreationRequest[],
+) {
+  return orderCreationRequests.some(
+    (request) =>
+      !request.requestStatus &&
+      request.createdOrderIds.length === 0 &&
+      !request.error,
+  );
+}
+
+function firstCreatedOrderId(
+  quoteCreatedOrderIds: string[],
+  orderCreationRequests: OrderCreationRequest[],
+) {
+  return (
+    quoteCreatedOrderIds[0] ??
+    orderCreationRequests.flatMap((request) => request.createdOrderIds)[0] ??
+    null
+  );
+}
+
+function requestError(orderCreationRequests: OrderCreationRequest[]) {
+  return (
+    orderCreationRequests.find((request) => request.error)?.error ?? null
+  );
+}
+
+function requestStatusForDisplay(input: {
+  createdOrderId: string | null;
+  orderCreationRequests: OrderCreationRequest[];
+  error: string | null;
+}) {
+  if (input.createdOrderId) {
+    return "הזמנה נוצרה";
+  }
+
+  if (input.error) {
+    return "שגיאה ביצירת הזמנה";
+  }
+
+  if (hasOpenOrderCreationRequest(input.orderCreationRequests)) {
+    return "ממתין ליצירת הזמנה";
+  }
+
+  const explicitStatus = input.orderCreationRequests.find(
+    (request) => request.requestStatus,
+  )?.requestStatus;
+
+  if (explicitStatus) {
+    return explicitStatus;
+  }
+
+  return "אין בקשת הזמנה";
+}
+
 export function mapQuote(
   record: RawRecord,
   documentLines: DocumentLine[] = [],
+  orderCreationRequests: OrderCreationRequest[] = [],
 ): Quote {
   const lineTypesFromDocumentLines = uniqueTextValues(
     documentLines.map((line) => line.lineType),
   );
+  const quoteCreatedOrderIds = linkedRecordIds(record.fields.fldKNXfM18R4OtfGk);
+  const createdOrderId = firstCreatedOrderId(
+    quoteCreatedOrderIds,
+    orderCreationRequests,
+  );
+  const orderCreationRequestError = requestError(orderCreationRequests);
 
   return {
     id: record.id,
@@ -138,6 +201,21 @@ export function mapQuote(
     hardwareColor: nullableTextValue(record.fields.fldQWyr3BZl4bxTBb),
     dismantlingOption: nullableTextValue(record.fields.fldRwScbjjUrYde6X),
     measurementRequired: measurementRequiredValue(record.fields.fldc6kFepSAl5rLw4),
-    createdOrderIds: linkedRecordIds(record.fields.fldKNXfM18R4OtfGk),
+    createdOrderIds: Array.from(
+      new Set([
+        ...quoteCreatedOrderIds,
+        ...orderCreationRequests.flatMap((request) => request.createdOrderIds),
+      ]),
+    ),
+    orderCreationRequests,
+    hasOpenOrderCreationRequest:
+      hasOpenOrderCreationRequest(orderCreationRequests),
+    createdOrderId,
+    orderCreationRequestStatusForDisplay: requestStatusForDisplay({
+      createdOrderId,
+      orderCreationRequests,
+      error: orderCreationRequestError,
+    }),
+    orderCreationRequestError,
   };
 }

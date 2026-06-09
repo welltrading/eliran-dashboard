@@ -1,6 +1,8 @@
 import "server-only";
-import type { DocumentLine } from "@/lib/types";
+import type { DocumentLine, OrderCreationRequest } from "@/lib/types";
 import { selectRecords } from "../client";
+import { mapOrderCreationRequest } from "../mappers/order-creation-requests";
+import type { RawOrderCreationRequestFields } from "../raw-types";
 import { airtableSchema } from "../schema";
 import { createRecord } from "../write-client";
 import { getDocumentLinesByQuoteId } from "./document-lines";
@@ -27,19 +29,6 @@ export type CreateOrderCreationRequestResult =
       errors: string[];
     };
 
-type RawOrderCreationRequestFields = {
-  fldaI9zE77a32nibS?: unknown;
-  fldNa87jPiA2O6BiK?: unknown;
-  fld81k3CttGthgzVF?: unknown;
-  fldUmyn72xtd0EK9h?: unknown;
-  fldeLwIaKgJmPnA3D?: unknown;
-  fldGHTJ7cWCzeeUvW?: unknown;
-  fld7oyKAyI7vSNLky?: unknown;
-  fldfDSzoN9MSj9s2t?: unknown;
-  fldpLvviItbbVImvF?: unknown;
-  fldkQkq7SzWm8dI8l?: unknown;
-};
-
 type CreatedOrderCreationRequestFields = {
   fldaI9zE77a32nibS: string;
   fldNa87jPiA2O6BiK: string[];
@@ -65,59 +54,57 @@ function normalizedOptionalText(value: string | null | undefined) {
   return normalized || null;
 }
 
-function linkedRecordIds(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
-}
-
-function textValue(value: unknown) {
-  if (typeof value === "string") {
-    return value.trim();
-  }
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "name" in value &&
-    typeof value.name === "string"
-  ) {
-    return value.name.trim();
-  }
-
-  return "";
-}
-
 function hasStandardDocumentLine(documentLines: DocumentLine[]) {
   return documentLines.some((line) => line.lineType === "סטנדרטי");
 }
 
-async function getOpenOrderCreationRequestsForQuote(quoteId: string) {
-  const requestFields = airtableSchema.fields.orderCreationRequests;
+function requestIsOpen(request: OrderCreationRequest) {
+  return (
+    !request.requestStatus &&
+    request.createdOrderIds.length === 0 &&
+    !request.error
+  );
+}
+
+const orderCreationRequestFieldIds = Object.values(
+  airtableSchema.fields.orderCreationRequests,
+);
+
+export async function getOrderCreationRequests() {
   const records = await selectRecords<RawOrderCreationRequestFields>(
     airtableSchema.tables.orderCreationRequests,
     {
-      fields: [
-        requestFields.quote,
-        requestFields.requestStatus,
-        requestFields.createdOrder,
-      ],
+      cache: "no-store",
+      fields: orderCreationRequestFieldIds,
       returnFieldsByFieldId: true,
     },
   );
 
-  return records.filter((record) => {
-    const fields = record.fields;
-    const quoteIds = linkedRecordIds(fields[requestFields.quote]);
-    const createdOrderIds = linkedRecordIds(fields[requestFields.createdOrder]);
-    const requestStatus = textValue(fields[requestFields.requestStatus]);
+  return records.map(mapOrderCreationRequest);
+}
 
-    return (
-      quoteIds.includes(quoteId) &&
-      !requestStatus &&
-      createdOrderIds.length === 0
-    );
-  });
+export async function getOrderCreationRequestsByQuoteIds(quoteIds: string[]) {
+  const quoteIdSet = new Set(quoteIds.filter(Boolean));
+
+  if (quoteIdSet.size === 0) {
+    return [];
+  }
+
+  const requests = await getOrderCreationRequests();
+
+  return requests.filter((request) =>
+    request.quoteIds.some((quoteId) => quoteIdSet.has(quoteId)),
+  );
+}
+
+async function getOpenOrderCreationRequestsForQuote(quoteId: string) {
+  const requests = await getOrderCreationRequestsByQuoteIds([quoteId]);
+  return requests.filter(requestIsOpen);
+}
+
+async function getCreatedOrderRequestsForQuote(quoteId: string) {
+  const requests = await getOrderCreationRequestsByQuoteIds([quoteId]);
+  return requests.filter((request) => request.createdOrderIds.length > 0);
 }
 
 function requestFields(input: {
@@ -208,7 +195,7 @@ export async function createOrderCreationRequestFromQuote(
     return {
       ok: false,
       message: "לא ניתן ליצור בקשת הזמנה.",
-      errors: ["להצעת המחיר כבר קיימת הזמנה שנוצרה."],
+      errors: ["כבר קיימת בקשת הזמנה או הזמנה להצעה זו"],
     };
   }
 
@@ -231,12 +218,13 @@ export async function createOrderCreationRequestFromQuote(
   }
 
   const openRequests = await getOpenOrderCreationRequestsForQuote(quoteId);
+  const createdOrderRequests = await getCreatedOrderRequestsForQuote(quoteId);
 
-  if (openRequests.length > 0) {
+  if (openRequests.length > 0 || createdOrderRequests.length > 0) {
     return {
       ok: false,
       message: "לא ניתן ליצור בקשת הזמנה.",
-      errors: ["כבר קיימת בקשת יצירת הזמנה פתוחה להצעה הזו."],
+      errors: ["כבר קיימת בקשת הזמנה או הזמנה להצעה זו"],
     };
   }
 

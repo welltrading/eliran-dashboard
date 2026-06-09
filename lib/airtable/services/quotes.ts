@@ -6,6 +6,7 @@ import type { RawQuoteFields } from "../raw-types";
 import { airtableTables } from "../tables";
 import { createRecord } from "../write-client";
 import { getDocumentLines } from "./document-lines";
+import { getOrderCreationRequestsByQuoteIds } from "./order-creation-requests";
 
 type StandardCreateQuoteInput = {
   quoteType: "סטנדרטי";
@@ -293,9 +294,26 @@ export async function getQuotes() {
     getDocumentLines(),
   ]);
   const linesByQuoteId = groupDocumentLinesByQuoteId(documentLines);
+  const orderCreationRequests = await getOrderCreationRequestsByQuoteIds(
+    records.map((record) => record.id),
+  );
+  const requestsByQuoteId = new Map(
+    records.map((record) => [
+      record.id,
+      orderCreationRequests.filter((request) =>
+        request.quoteIds.includes(record.id),
+      ),
+    ]),
+  );
 
   return records
-    .map((record) => mapQuote(record, linesByQuoteId.get(record.id) ?? []))
+    .map((record) =>
+      mapQuote(
+        record,
+        linesByQuoteId.get(record.id) ?? [],
+        requestsByQuoteId.get(record.id) ?? [],
+      ),
+    )
     .sort((a, b) => Number(b.quoteNumber) - Number(a.quoteNumber));
 }
 

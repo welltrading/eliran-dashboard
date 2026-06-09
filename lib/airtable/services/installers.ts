@@ -383,6 +383,7 @@ function mapPendingPaymentApprovalTask(
     customerName: taskCustomerName(fields),
     phone: nullableTextValue(fields.fld6yO2AJBtvihM9W),
     address: nullableTextValue(fields.fldzHUUvieCC7sZqz),
+    completionImages: [],
     orderNumber: firstListText(fields.fldJktpQOU9RRgy1t),
     taskType: taskTypeLabel(fields),
     installerId,

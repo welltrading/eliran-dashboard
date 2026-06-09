@@ -159,6 +159,19 @@ export type RawDocumentLineFields = {
   fldsdyswewYXl88g6?: unknown;
 };
 
+export type RawOrderCreationRequestFields = {
+  fldaI9zE77a32nibS?: unknown;
+  fldNa87jPiA2O6BiK?: unknown;
+  fld81k3CttGthgzVF?: unknown;
+  fldUmyn72xtd0EK9h?: unknown;
+  fldeLwIaKgJmPnA3D?: unknown;
+  fldGHTJ7cWCzeeUvW?: unknown;
+  fld7oyKAyI7vSNLky?: unknown;
+  fldfDSzoN9MSj9s2t?: unknown;
+  fldpLvviItbbVImvF?: unknown;
+  fldkQkq7SzWm8dI8l?: unknown;
+};
+
 export type RawInventoryFields = {
   fldYboj1U8ZHJK6aq?: unknown;
   fldHUiTkn1TFdW9n4?: unknown;

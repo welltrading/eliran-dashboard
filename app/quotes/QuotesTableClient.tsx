@@ -120,6 +120,39 @@ function hasStandardDocumentLine(quote: Quote) {
   return quote.documentLines.some((line) => line.lineType === "סטנדרטי");
 }
 
+function hasActiveOrderCreationRequestError(quote: Quote) {
+  return Boolean(quote.orderCreationRequestError);
+}
+
+function canCreateOrderCreationRequest(quote: Quote) {
+  return (
+    quote.documentLines.length > 0 &&
+    !quote.hasOpenOrderCreationRequest &&
+    quote.createdOrderIds.length === 0 &&
+    !hasActiveOrderCreationRequestError(quote)
+  );
+}
+
+function orderCreationRequestActionLabel(quote: Quote) {
+  if (quote.createdOrderIds.length > 0) {
+    return "כבר נוצרה הזמנה";
+  }
+
+  if (quote.hasOpenOrderCreationRequest) {
+    return "בקשת הזמנה ממתינה";
+  }
+
+  if (hasActiveOrderCreationRequestError(quote)) {
+    return "שגיאה דורשת טיפול";
+  }
+
+  if (quote.documentLines.length === 0) {
+    return "אין שורות מסמך";
+  }
+
+  return "צור בקשת הזמנה";
+}
+
 function newOrderCreationRequestDraft(quote: Quote): OrderCreationRequestDraft {
   return {
     paymentType: "מקדמה 60%",
@@ -203,6 +236,10 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
   }
 
   function toggleOrderCreationRequest(quote: Quote) {
+    if (!canCreateOrderCreationRequest(quote)) {
+      return;
+    }
+
     setRequestFeedback(null);
     setRequestingQuoteId((currentQuoteId) =>
       currentQuoteId === quote.id ? null : quote.id,
@@ -698,6 +735,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
               <tr>
                 <th>מספר הצעה</th>
                 <th>פעולה</th>
+                <th>בקשת הזמנה</th>
                 <th>הצעת EasyCount</th>
                 <th>הזמנה</th>
                 <th>שם לקוח</th>
@@ -715,28 +753,47 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
               {filteredQuotes.map((quote) => {
                 const hasCreatedOrder = quote.createdOrderIds.length > 0;
                 const hasDocumentLines = quote.documentLines.length > 0;
+                const canCreateRequest = canCreateOrderCreationRequest(quote);
+                const actionLabel = orderCreationRequestActionLabel(quote);
 
                 return (
                   <Fragment key={quote.id}>
                   <tr>
                     <td>{quote.quoteNumber || "-"}</td>
                     <td>
-                      {hasCreatedOrder ? (
-                        <span className="muted-text">כבר נוצרה הזמנה</span>
-                      ) : hasDocumentLines ? (
+                      {canCreateRequest ? (
                         <button
                           className="task-row-actions__secondary"
                           type="button"
                           onClick={() => toggleOrderCreationRequest(quote)}
                           disabled={submittingRequestQuoteId === quote.id}
                         >
-                          צור בקשת הזמנה
+                          {actionLabel}
                         </button>
                       ) : (
-                        <span className="muted-text">
-                          פעולה זו מושהית עד התאמה למודל שורות מסמך
-                        </span>
+                        <button
+                          className="task-row-actions__secondary"
+                          type="button"
+                          disabled
+                        >
+                          {actionLabel}
+                        </button>
                       )}
+                    </td>
+                    <td>
+                      <div className="order-payment-summary">
+                        <span>{quote.orderCreationRequestStatusForDisplay}</span>
+                        {quote.createdOrderId ? (
+                          <span className="badge badge--success">
+                            {quote.createdOrderId}
+                          </span>
+                        ) : null}
+                        {quote.orderCreationRequestError ? (
+                          <span className="badge badge--danger">
+                            {quote.orderCreationRequestError}
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td>
                       <CreateQuoteButton
@@ -771,7 +828,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                   </tr>
                   {requestingQuoteId === quote.id ? (
                     <tr className="tasks-table__assignment-row">
-                      <td colSpan={13}>
+                      <td colSpan={14}>
                         <div className="task-assignment-editor">
                           <div className="task-assignment-editor__heading">
                             <div>
