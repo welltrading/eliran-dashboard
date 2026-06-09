@@ -23,10 +23,7 @@ export function CreateQuoteButton({
   if (ezDocUrl) {
     return (
       <div className="quote-action">
-        <a href={ezDocUrl} target="_blank" rel="noreferrer">
-          פתיחת PDF
-        </a>
-        <span className="quote-action__message">כבר נוצרה הצעת מחיר</span>
+        <span className="quote-action__message">כבר הופקה הצעת מחיר</span>
       </div>
     );
   }
@@ -34,7 +31,7 @@ export function CreateQuoteButton({
   async function handleClick() {
     if (!trimmedRecordId) {
       setState("error");
-      setMessage("חסר מזהה רשומה להצעת המחיר.");
+      setMessage("חסרים פרטי הצעת המחיר.");
       return;
     }
 
@@ -68,7 +65,7 @@ export function CreateQuoteButton({
       }
 
       setState("success");
-      setMessage("הבקשה נשלחה לאיזיקאונט. הקישור יתעדכן אחרי ש־Make יסיים.");
+      setMessage("הבקשה נשלחה להפקת הצעת המחיר. הקישור יתעדכן בסיום.");
     } catch (error) {
       setState("error");
       setMessage(
@@ -82,11 +79,8 @@ export function CreateQuoteButton({
   if (!hasDocumentLines) {
     return (
       <div className="quote-action">
-        <button className="quote-action__button" type="button" disabled>
-          יצירת הצעת מחיר
-        </button>
         <span className="quote-action__message">
-          נדרשות שורות מסמך לפני הפקת הצעת EasyCount
+          נדרשים פריטים בהצעה לפני הפקה
         </span>
       </div>
     );

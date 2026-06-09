@@ -16,7 +16,7 @@ export default async function QuotesPage() {
     <div className="page page--wide">
       <PageHeader
         title="הצעות מחיר"
-        description="טבלת הצעות מחיר לקריאה בלבד מתוך Airtable."
+        description="מסך עבודה להצעות מחיר, לקוחות והפקת PDF."
       />
 
       <Card>

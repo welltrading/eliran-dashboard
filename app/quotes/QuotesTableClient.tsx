@@ -49,20 +49,6 @@ function newLineDraft(lineType: DocumentLineDraftType = "סטנדרטי"): Docum
   };
 }
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("he-IL").format(date);
-}
-
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("he-IL", {
     style: "currency",
@@ -85,16 +71,12 @@ function displayQuoteTotal(quote: Quote) {
   return quote.totalPrice;
 }
 
-function formatLineTypes(lineTypes: string[]) {
-  return lineTypes.length > 0 ? lineTypes.join(", ") : "-";
-}
-
 function documentLineLabel(quote: Quote) {
   if (quote.documentLines.length === 0) {
-    return "אין שורות מסמך";
+    return "אין פריטים";
   }
 
-  return `${quote.documentLines.length} שורות`;
+  return `${quote.documentLines.length} פריטים`;
 }
 
 function matchesStatus(status: string, filter: StatusFilter) {
@@ -131,26 +113,6 @@ function canCreateOrderCreationRequest(quote: Quote) {
     quote.createdOrderIds.length === 0 &&
     !hasActiveOrderCreationRequestError(quote)
   );
-}
-
-function orderCreationRequestActionLabel(quote: Quote) {
-  if (quote.createdOrderIds.length > 0) {
-    return "כבר נוצרה הזמנה";
-  }
-
-  if (quote.hasOpenOrderCreationRequest) {
-    return "בקשת הזמנה ממתינה";
-  }
-
-  if (hasActiveOrderCreationRequestError(quote)) {
-    return "שגיאה דורשת טיפול";
-  }
-
-  if (quote.documentLines.length === 0) {
-    return "אין שורות מסמך";
-  }
-
-  return "צור בקשת הזמנה";
 }
 
 function newOrderCreationRequestDraft(quote: Quote): OrderCreationRequestDraft {
@@ -380,7 +342,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
         <div className="standalone-task-creator__header">
           <div>
             <h2>הצעת מחיר חדשה</h2>
-            <p>יצירה במודל החדש: הצעת מחיר עם שורות מסמך.</p>
+            <p>יצירת הצעת מחיר עם פריטים וסכום להצעה.</p>
           </div>
           <button
             className="primary-action"
@@ -492,8 +454,8 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
             <div className="task-assignment-editor">
               <div className="task-assignment-editor__heading">
                 <div>
-                  <strong>שורות מסמך</strong>
-                  <span>כל שורה תיווצר ברשומה נפרדת בטבלת שורות מסמך.</span>
+                  <strong>פריטים בהצעה</strong>
+                  <span>הוסיפו את הפריטים והמחירים שיופיעו בהצעה.</span>
                 </div>
               </div>
 
@@ -734,66 +696,51 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
             <thead>
               <tr>
                 <th>מספר הצעה</th>
-                <th>פעולה</th>
-                <th>בקשת הזמנה</th>
-                <th>הצעת EasyCount</th>
-                <th>הזמנה</th>
                 <th>שם לקוח</th>
                 <th>טלפון</th>
+                <th>כתובת</th>
                 <th>סוג הצעה</th>
-                <th>שורות מסמך</th>
-                <th>סוגים לפי שורות</th>
+                <th>סכום הצעה</th>
                 <th>סטטוס</th>
-                <th>תאריך יצירה</th>
-                <th>סה"כ לפי שורות</th>
-                <th>מקור הגעה</th>
+                <th>פריטים בהצעה</th>
+                <th>הופקה הצעת מחיר</th>
+                <th>מספר מסמך EasyCount</th>
+                <th>PDF</th>
+                <th>הפקת הצעת מחיר</th>
               </tr>
             </thead>
             <tbody>
               {filteredQuotes.map((quote) => {
-                const hasCreatedOrder = quote.createdOrderIds.length > 0;
                 const hasDocumentLines = quote.documentLines.length > 0;
-                const canCreateRequest = canCreateOrderCreationRequest(quote);
-                const actionLabel = orderCreationRequestActionLabel(quote);
 
                 return (
                   <Fragment key={quote.id}>
                   <tr>
                     <td>{quote.quoteNumber || "-"}</td>
-                    <td>
-                      {canCreateRequest ? (
-                        <button
-                          className="task-row-actions__secondary"
-                          type="button"
-                          onClick={() => toggleOrderCreationRequest(quote)}
-                          disabled={submittingRequestQuoteId === quote.id}
-                        >
-                          {actionLabel}
-                        </button>
-                      ) : (
-                        <button
-                          className="task-row-actions__secondary"
-                          type="button"
-                          disabled
-                        >
-                          {actionLabel}
-                        </button>
-                      )}
-                    </td>
+                    <td>{quote.customerName || "-"}</td>
+                    <td><PhoneText value={quote.phone} /></td>
+                    <td>{quote.address || "-"}</td>
+                    <td>{displayQuoteType(quote)}</td>
+                    <td>{formatCurrency(displayQuoteTotal(quote))}</td>
+                    <td>{quote.status || "-"}</td>
                     <td>
                       <div className="order-payment-summary">
-                        <span>{quote.orderCreationRequestStatusForDisplay}</span>
-                        {quote.createdOrderId ? (
-                          <span className="badge badge--success">
-                            {quote.createdOrderId}
-                          </span>
-                        ) : null}
-                        {quote.orderCreationRequestError ? (
-                          <span className="badge badge--danger">
-                            {quote.orderCreationRequestError}
-                          </span>
+                        <span>{documentLineLabel(quote)}</span>
+                        {!hasDocumentLines ? (
+                          <span className="badge badge--warning">אין פריטים</span>
                         ) : null}
                       </div>
+                    </td>
+                    <td>{quote.ezDocUrl ? "כן" : "לא"}</td>
+                    <td>-</td>
+                    <td>
+                      {quote.ezDocUrl ? (
+                        <a href={quote.ezDocUrl} target="_blank" rel="noreferrer">
+                          פתיחת PDF
+                        </a>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                     <td>
                       <CreateQuoteButton
@@ -802,29 +749,6 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                         ezDocUrl={quote.ezDocUrl}
                       />
                     </td>
-                    <td>
-                      {hasCreatedOrder ? (
-                        <span className="badge badge--success">נוצרה הזמנה</span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td>{quote.customerName || "-"}</td>
-                    <td><PhoneText value={quote.phone} /></td>
-                    <td>{displayQuoteType(quote)}</td>
-                    <td>
-                      <div className="order-payment-summary">
-                        <span>{documentLineLabel(quote)}</span>
-                        {!hasDocumentLines ? (
-                          <span className="badge badge--warning">אין שורות מסמך</span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td>{formatLineTypes(quote.lineTypesFromDocumentLines)}</td>
-                    <td>{quote.status || "-"}</td>
-                    <td>{formatDate(quote.createdAt)}</td>
-                    <td>{formatCurrency(displayQuoteTotal(quote))}</td>
-                    <td>{quote.leadSource ?? "-"}</td>
                   </tr>
                   {requestingQuoteId === quote.id ? (
                     <tr className="tasks-table__assignment-row">
@@ -834,7 +758,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                             <div>
                               <strong>בקשת יצירת הזמנה</strong>
                               <span>
-                                ההזמנה תיווצר על ידי האוטומציה ב-Airtable.
+                                הבקשה תטופל בהמשך.
                               </span>
                             </div>
                           </div>
