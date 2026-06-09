@@ -32,7 +32,6 @@ type TasksTableClientProps = {
   tasks: Task[];
   installerOptions: TaskInstallerOption[];
   taskTypeOptions: TaskTypeOption[];
-  airtableTasksTableUrl: string;
 };
 
 const timeWindowOrder = new Map([
@@ -322,6 +321,21 @@ function scheduleLabel(task: Task) {
   return task.scheduleSendStatus ?? "לא נשלח";
 }
 
+function userFacingTaskError(message: string) {
+  const technicalTerms = [
+    "Airtable",
+    "Record",
+    "record",
+    "document_lines",
+    "payload",
+    "debug",
+  ];
+
+  return technicalTerms.some((term) => message.includes(term))
+    ? "הפעולה לא הושלמה. נסו שוב או פנו לאלירן."
+    : message;
+}
+
 function scheduleCardClass(task: Task, view: ScheduleView) {
   const classes = ["daily-schedule__task"];
 
@@ -368,7 +382,6 @@ export function TasksTableClient({
   tasks,
   installerOptions,
   taskTypeOptions,
-  airtableTasksTableUrl,
 }: TasksTableClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -570,7 +583,9 @@ export function TasksTableClient({
       }
 
       setTaskUpdateError(
-        [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+        userFacingTaskError(
+          [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+        ),
       );
       setUpdatingTaskId(null);
     });
@@ -630,7 +645,9 @@ export function TasksTableClient({
       }
 
       setTaskUpdateError(
-        [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+        userFacingTaskError(
+          [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+        ),
       );
     });
   }
@@ -659,7 +676,9 @@ export function TasksTableClient({
       }
 
       setTaskUpdateError(
-        [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+        userFacingTaskError(
+          [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+        ),
       );
       setAssignmentSavingTaskId(null);
     });
@@ -782,13 +801,6 @@ export function TasksTableClient({
               >
                 ערוך שיבוץ
               </button>
-              <a
-                href={`${airtableTasksTableUrl}/${task.id}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                פתח משימה
-              </a>
             </div>
           </td>
           <td>{formatDate(task.executionDate)}</td>
@@ -890,14 +902,6 @@ export function TasksTableClient({
           )}
         </div>
       )}
-
-      <a
-        href={`${airtableTasksTableUrl}/${task.id}`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        פתח משימה
-      </a>
     </article>
   );
 

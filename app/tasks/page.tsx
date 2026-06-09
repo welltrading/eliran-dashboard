@@ -10,9 +10,6 @@ import { TasksTableClient } from "./TasksTableClient";
 
 export const dynamic = "force-dynamic";
 
-const AIRTABLE_TASKS_TABLE_URL =
-  "https://airtable.com/apphmGmx3hhLZI8AK/tblsodUowDPPiOcCk";
-
 type TasksPageProps = {
   searchParams?: Promise<{
     orderId?: string | string[];
@@ -42,33 +39,15 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     <div className="page page--wide">
       <PageHeader
         title="משימות"
-        description="מסך עבודה לתיאום משימות, מתקינים ולוחות זמנים מתוך טבלת משימות."
+        description="מסך עבודה לתיאום משימות, מתקינים ולוחות זמנים."
       />
-
-      <Card className="validation-card">
-        <div className="card__body exception-panel__header">
-          <p className="muted-text">
-            ניתן לסמן משימות כבוצעו מהדשבורד. עריכה מלאה עדיין מתבצעת באירטייבל.
-          </p>
-          <a
-            className="primary-action"
-            href={AIRTABLE_TASKS_TABLE_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
-            פתח טבלת משימות באירטייבל
-          </a>
-        </div>
-      </Card>
 
       {orderId ? (
         <Card className="validation-card">
           <div className="card__body task-filter-banner">
             <div>
               <strong>מציג משימות להזמנה {orderNumberForFilter}</strong>
-              <p>
-                הסינון מבוסס על קישור רשומת ההזמנה באירטייבל, לא על התאמת טקסט.
-              </p>
+              <p>מוצגות רק המשימות שקשורות להזמנה הזו.</p>
             </div>
             <a className="task-row-actions__secondary" href="/tasks">
               נקה סינון
@@ -82,7 +61,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           <div className="card__body stat-card">
             <p className="stat-card__label">סה"כ משימות</p>
             <p className="stat-card__value">{summary.totalTasks}</p>
-            <p className="stat-card__note">מתוך טבלת משימות</p>
+            <p className="stat-card__note">במערכת</p>
           </div>
         </Card>
         <Card>
@@ -144,7 +123,6 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
           tasks={displayedTasks}
           installerOptions={installerOptions}
           taskTypeOptions={taskTypeOptions}
-          airtableTasksTableUrl={AIRTABLE_TASKS_TABLE_URL}
         />
       </Card>
     </div>
