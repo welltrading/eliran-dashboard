@@ -259,6 +259,7 @@ export type Order = {
   orderNumber: string;
   customerName: string;
   phone: string | null;
+  address: string | null;
   orderType: OrderType;
   status: string;
   createdAt: string | null;

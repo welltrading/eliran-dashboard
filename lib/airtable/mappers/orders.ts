@@ -182,6 +182,7 @@ export function mapOrder(
     orderNumber: textValue(record.fields.fldDrP4MqsxV6EtJd),
     customerName: textValue(record.fields.fldZEobEKEQtMtoGV),
     phone: nullableTextValue(record.fields.fldk7OdnVLITahJxd) || nullableTextValue(record.fields.fld5bh56XRJGJhrsz),
+    address: nullableTextValue(record.fields.fldzNnG3a9uojQPyO),
     orderType: orderTypeValue(record.fields.flduurO6CcPQx6oya),
     status: textValue(record.fields.fldwvbnGd8e3PAU7d),
     createdAt: nullableTextValue(record.fields.flde2no9Qoof141vN),

@@ -13,7 +13,6 @@ import {
   createOrderTaskAction,
   updateCustomProductionAction,
 } from "./actions";
-import { CreateInvoiceButton } from "./CreateInvoiceButton";
 
 type TaskInstallerOption = {
   id: string;
@@ -117,22 +116,13 @@ function displayAdvance60(order: Order) {
   return order.advancePaymentAmount;
 }
 
-function displayBalance40(order: Order) {
-  if (hasDocumentLines(order)) {
-    return order.balance40FromDocumentLines;
-  }
-
-  // LEGACY_DISPLAY_FALLBACK_ONLY: temporary display fallback for unmigrated order records.
-  return order.remainingPaymentAmount;
-}
-
 function displayDocumentLineDescription(order: Order) {
   if (!hasDocumentLines(order)) {
     return null;
   }
 
   return order.documentLines.slice(0, 3).map((line) => {
-    const title = line.displayDescription || line.description || "שורת מסמך";
+    const title = line.displayDescription || line.description || "פריט";
     const quantity = line.quantity ? ` × ${line.quantity}` : "";
     return `${title}${quantity} · ${formatCurrency(line.lineTotal)}`;
   });
@@ -140,12 +130,6 @@ function displayDocumentLineDescription(order: Order) {
 
 function firstPaymentStage(order: Order): PaymentStage {
   return order.paymentMode?.includes("מלא") ? "full_payment" : "advance_60";
-}
-
-function firstPaymentAmount(order: Order) {
-  return firstPaymentStage(order) === "full_payment"
-    ? displayOrderTotal(order)
-    : displayAdvance60(order);
 }
 
 function isCustomProductionOrder(order: Order) {
@@ -277,7 +261,7 @@ export function OrdersTableClient({
 
     return (
       <tr className="tasks-table__assignment-row">
-        <td colSpan={12}>
+        <td colSpan={9}>
           <form
             className="task-assignment-editor"
             onSubmit={(event) => {
@@ -289,7 +273,7 @@ export function OrdersTableClient({
               <div>
                 <strong>יצירת משימה להזמנה</strong>
                 <span>
-                  {order.orderNumber || order.id} · {order.customerName || "לקוח ללא שם"}
+                  {order.orderNumber || "ללא מספר הזמנה"} · {order.customerName || "לקוח ללא שם"}
                 </span>
               </div>
             </div>
@@ -411,7 +395,7 @@ export function OrdersTableClient({
 
     return (
       <tr className="tasks-table__assignment-row orders-table__production-row">
-        <td colSpan={12}>
+        <td colSpan={9}>
           <div className="custom-production-panel">
             <form
               className="task-assignment-editor"
@@ -426,7 +410,7 @@ export function OrdersTableClient({
               <div className="task-assignment-editor__heading">
                 <div>
                   <strong>
-                    עדכון ייצור אישי להזמנה {order.orderNumber || order.id}
+                    עדכון ייצור אישי להזמנה {order.orderNumber || "ללא מספר הזמנה"}
                   </strong>
                   <span>
                     {order.customerName || "לקוח ללא שם"}
@@ -565,7 +549,7 @@ export function OrdersTableClient({
 
       <div className="filters-bar orders-filters" aria-label="סינון הזמנות">
         <label className="filter-field">
-          <span className="filter-label">View</span>
+          <span className="filter-label">תצוגה</span>
           <select
             className="filter-select"
             value={productionFilter}
@@ -591,21 +575,17 @@ export function OrdersTableClient({
             <th>מספר הזמנה</th>
             <th>שם לקוח</th>
             <th>טלפון</th>
+            <th>כתובת</th>
             <th>סוג הזמנה</th>
-            <th>מקור הזמנה</th>
             <th>פריטים בהזמנה</th>
             <th>סטטוס</th>
-            <th>תאריך יצירה</th>
             <th>מחיר כולל</th>
             <th>תשלום</th>
-            <th>הערות קצרות</th>
-            <th>מסמך EasyCount</th>
           </tr>
         </thead>
         <tbody>
           {filteredOrders.map((order) => {
             const initialPaymentStage = firstPaymentStage(order);
-            const showFinalInvoice = initialPaymentStage === "advance_60";
             const linkedTaskCount = order.openTaskCount;
             const documentLineDescriptions = displayDocumentLineDescription(order);
             const taskIndicator =
@@ -619,28 +599,10 @@ export function OrdersTableClient({
                 <td>{order.orderNumber || "-"}</td>
                 <td>{order.customerName || "-"}</td>
                 <td><PhoneText value={order.phone} /></td>
+                <td>{order.address || "-"}</td>
                 <td>
                   <div className="orders-table__type-cell">
                     <span>{displayOrderType(order)}</span>
-                  </div>
-                </td>
-                <td>
-                  <div className="order-payment-summary">
-                    <span>{order.orderSourceForDisplay}</span>
-                    {order.orderCreationRequestId ? (
-                      <span>בקשה: {order.orderCreationRequestId}</span>
-                    ) : null}
-                    {order.sourceQuoteDisplay ? (
-                      <span>הצעה: {order.sourceQuoteDisplay}</span>
-                    ) : null}
-                    {order.orderCreationRequestStatus ? (
-                      <span>סטטוס בקשה: {order.orderCreationRequestStatus}</span>
-                    ) : null}
-                    {order.orderCreationRequestError ? (
-                      <span className="order-invoice-actions__error">
-                        שגיאה: {order.orderCreationRequestError}
-                      </span>
-                    ) : null}
                   </div>
                 </td>
                 <td className="orders-table__description-cell">
@@ -712,83 +674,21 @@ export function OrdersTableClient({
                   </div>
                 </td>
                 <td>{order.status || "-"}</td>
-                <td>{formatDate(order.createdAt)}</td>
                 <td>{formatCurrency(displayOrderTotal(order))}</td>
                 <td>
                   <div className="order-payment-summary">
-                    <span>{order.paymentMode || "-"}</span>
-                    <span>מקדמה 60%: {formatOptionalCurrency(displayAdvance60(order))}</span>
-                    <span>יתרה 40%: {formatOptionalCurrency(displayBalance40(order))}</span>
-                  </div>
-                </td>
-                <td>{order.shortNotes ?? "-"}</td>
-                <td className="orders-table__invoice-cell">
-                  <div className="order-invoice-actions">
-                    <div className="order-invoice-actions__item">
-                      <div className="order-invoice-actions__meta">
-                        <strong>
-                          {initialPaymentStage === "full_payment"
-                            ? "תשלום מלא"
-                            : "מקדמה 60%"}
-                        </strong>
-                        <span>{formatOptionalCurrency(firstPaymentAmount(order))}</span>
-                        {order.easyCountDocumentNumber ? (
-                          <span>מסמך {order.easyCountDocumentNumber}</span>
-                        ) : null}
-                        {order.easyCountStatus ||
-                        order.easyCountDocumentNumber ||
-                        order.easyCountDocumentUrl ? (
-                          <span>{order.easyCountStatus ?? "נשלח"}</span>
-                        ) : null}
-                        {order.easyCountError ? (
-                          <span className="order-invoice-actions__error">
-                            שגיאה: {order.easyCountError}
-                          </span>
-                        ) : null}
-                      </div>
-                      <CreateInvoiceButton
-                        recordId={order.id}
-                        orderType={order.orderType}
-                        paymentStage={initialPaymentStage}
-                        existingDocumentId={order.easyCountDocumentId}
-                        existingDocumentUrl={order.easyCountDocumentUrl}
-                        createLabel="הפקת חשבונית"
-                        loadingLabel="מפיק חשבונית..."
-                        existingLabel=""
-                      />
-                    </div>
-
-                    {showFinalInvoice ? (
-                      <div className="order-invoice-actions__item">
-                        <div className="order-invoice-actions__meta">
-                          <strong>יתרה 40%</strong>
-                          <span>{formatOptionalCurrency(displayBalance40(order))}</span>
-                          {order.easyCountFinalDocumentNumber ? (
-                          <span>מסמך {order.easyCountFinalDocumentNumber}</span>
-                        ) : null}
-                          {order.easyCountFinalStatus ||
-                          order.easyCountFinalDocumentNumber ||
-                          order.easyCountFinalDocumentUrl ? (
-                            <span>{order.easyCountFinalStatus ?? "נשלח"}</span>
-                          ) : null}
-                        {order.easyCountFinalError ? (
-                          <span className="order-invoice-actions__error">
-                              שגיאה: {order.easyCountFinalError}
-                            </span>
-                          ) : null}
-                        </div>
-                        <CreateInvoiceButton
-                          recordId={order.id}
-                          orderType={order.orderType}
-                          paymentStage="final_40"
-                          existingDocumentId={order.easyCountFinalDocumentId}
-                          existingDocumentUrl={order.easyCountFinalDocumentUrl}
-                          createLabel="הפקת יתרה"
-                          loadingLabel="מפיק יתרה..."
-                          existingLabel=""
-                        />
-                      </div>
-                    ) : null}
+                    <span>
+                      {initialPaymentStage === "full_payment"
+                        ? "תשלום מלא"
+                        : "מקדמה 60%"}
+                    </span>
+                    <span>
+                      {formatOptionalCurrency(
+                        initialPaymentStage === "full_payment"
+                          ? displayOrderTotal(order)
+                          : displayAdvance60(order),
+                      )}
+                    </span>
                   </div>
                 </td>
               </tr>
