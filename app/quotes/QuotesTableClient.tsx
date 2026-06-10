@@ -138,6 +138,46 @@ function newOrderCreationRequestDraft(quote: Quote): OrderCreationRequestDraft {
   };
 }
 
+function orderCreationActionLabel(quote: Quote) {
+  if (quote.createdOrderId) {
+    return "פתח בהזמנות";
+  }
+
+  if (quote.hasOpenOrderCreationRequest) {
+    return "ממתין ליצירת הזמנה";
+  }
+
+  if (quote.documentLines.length === 0) {
+    return "אין שורות מסמך";
+  }
+
+  if (hasActiveOrderCreationRequestError(quote)) {
+    return "שגיאה ביצירת הזמנה";
+  }
+
+  return "יצירת הזמנה מהצעה";
+}
+
+function orderCreationActionTitle(quote: Quote) {
+  if (quote.createdOrderId) {
+    return "להצעה זו כבר נוצרה הזמנה.";
+  }
+
+  if (quote.hasOpenOrderCreationRequest) {
+    return "בקשת יצירת הזמנה כבר נשלחה. לחץ ריענון נתונים בעוד כמה שניות.";
+  }
+
+  if (quote.documentLines.length === 0) {
+    return "לא ניתן ליצור הזמנה מהצעה ללא שורות מסמך.";
+  }
+
+  if (hasActiveOrderCreationRequestError(quote)) {
+    return quote.orderCreationRequestError ?? "בקשת יצירת ההזמנה נכשלה.";
+  }
+
+  return "יצירת הזמנה מהצעה דרך בקשת יצירת הזמנה מאושרת.";
+}
+
 export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -281,7 +321,11 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
       });
 
       if (result.ok) {
-        setRequestFeedback({ kind: "success", message: result.message });
+        setRequestFeedback({
+          kind: "success",
+          message:
+            "בקשת יצירת הזמנה נשלחה. לחץ ריענון נתונים בעוד כמה שניות.",
+        });
         setRequestingQuoteId(null);
         router.refresh();
         return;
@@ -690,6 +734,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                 <th>מספר מסמך EasyCount</th>
                 <th>PDF</th>
                 <th>הפקת הצעת מחיר</th>
+                <th>יצירת הזמנה</th>
               </tr>
             </thead>
             <tbody>
@@ -740,16 +785,41 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                         ezDocError={quote.ezDocError}
                       />
                     </td>
+                    <td>
+                      {quote.createdOrderId ? (
+                        <a
+                          href={`/orders?orderId=${encodeURIComponent(
+                            quote.createdOrderId,
+                          )}`}
+                          title={orderCreationActionTitle(quote)}
+                        >
+                          {orderCreationActionLabel(quote)}
+                        </a>
+                      ) : (
+                        <button
+                          className="task-row-actions__secondary"
+                          type="button"
+                          disabled={
+                            !canCreateOrderCreationRequest(quote) ||
+                            submittingRequestQuoteId === quote.id
+                          }
+                          title={orderCreationActionTitle(quote)}
+                          onClick={() => toggleOrderCreationRequest(quote)}
+                        >
+                          {orderCreationActionLabel(quote)}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                   {requestingQuoteId === quote.id ? (
                     <tr className="tasks-table__assignment-row">
-                      <td colSpan={14}>
+                      <td colSpan={13}>
                         <div className="task-assignment-editor">
                           <div className="task-assignment-editor__heading">
                             <div>
-                              <strong>בקשת יצירת הזמנה</strong>
+                              <strong>יצירת הזמנה מהצעה</strong>
                               <span>
-                                הבקשה תטופל בהמשך.
+                                הבקשה תיצור הזמנה ושורות מסמך דרך האוטומציה המאושרת.
                               </span>
                             </div>
                           </div>
@@ -874,7 +944,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                             >
                               {submittingRequestQuoteId === quote.id
                                 ? "שולח בקשה..."
-                                : "שלח בקשת יצירת הזמנה"}
+                                : "יצירת הזמנה מהצעה"}
                             </button>
                             <button
                               className="task-row-actions__secondary"
