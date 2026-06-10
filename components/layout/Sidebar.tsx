@@ -7,7 +7,6 @@ import {
   ClipboardList,
   CreditCard,
   FileText,
-  Gauge,
   Hammer,
   PackageOpen,
   Users,
@@ -16,7 +15,6 @@ import {
 import { appBranding } from "@/lib/branding";
 
 const navItems = [
-  { href: "/", label: "דשבורד", icon: Gauge },
   { href: "/quotes", label: "הצעות מחיר", icon: FileText },
   { href: "/orders", label: "הזמנות", icon: ClipboardList },
   { href: "/tasks", label: "משימות", icon: Hammer },
