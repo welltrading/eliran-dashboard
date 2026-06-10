@@ -1,12 +1,8 @@
 "use client";
 
 import { type FormEvent, useMemo, useState, useTransition } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import type { StockStatus } from "@/lib/types";
-import {
-  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
-  isDocumentLinesWriteGuardEnabled,
-} from "@/lib/safety-guard";
 import { createInventoryMovementAction } from "./actions";
 
 export type InventoryTableItem = {
@@ -49,6 +45,8 @@ type MovementResult = {
   errors?: string[];
 };
 
+type InventoryOperation = "add" | "remove";
+
 const statusLabels: Record<StockStatus, string> = {
   ok: "תקין",
   low: "מלאי נמוך",
@@ -57,9 +55,17 @@ const statusLabels: Record<StockStatus, string> = {
 };
 
 const movementTypes = [
-  { value: "כניסה", label: "הוספת מלאי", icon: ArrowDownToLine },
-  { value: "יציאה", label: "הוצאת מלאי", icon: ArrowUpFromLine },
-  { value: "התאמה", label: "התאמת מלאי", icon: SlidersHorizontal },
+  { value: "add", label: "הוספת מלאי", icon: ArrowDownToLine },
+  { value: "remove", label: "הוצאת מלאי", icon: ArrowUpFromLine },
+] satisfies Array<{
+  value: InventoryOperation;
+  label: string;
+  icon: typeof ArrowDownToLine;
+}>;
+
+const movementLocations = [
+  "חנות",
+  "מחסן",
 ];
 
 function statusClass(status: StockStatus) {
@@ -94,6 +100,12 @@ function itemSortValue(item: InventoryTableItem) {
   return statusPriority(item.status);
 }
 
+function productOptionLabel(label: string) {
+  return /^rec[A-Za-z0-9]{14}(?:\s*\|.*)?$/.test(label.trim())
+    ? "מוצר ללא שם"
+    : label;
+}
+
 export function InventoryTableClient({
   items,
   locations,
@@ -105,12 +117,11 @@ export function InventoryTableClient({
   const [location, setLocation] = useState("הכל");
   const [status, setStatus] = useState<StockStatus | "הכל">("הכל");
   const [productId, setProductId] = useState(productOptions[0]?.id ?? "");
-  const [movementLocation, setMovementLocation] = useState(locations[0] ?? "");
-  const [movementType, setMovementType] = useState("כניסה");
+  const [movementLocation, setMovementLocation] = useState(movementLocations[0]);
+  const [operation, setOperation] = useState<InventoryOperation>("add");
   const [quantity, setQuantity] = useState("1");
   const [notes, setNotes] = useState("");
   const [result, setResult] = useState<MovementResult | null>(null);
-  const isAdjustment = movementType === "התאמה";
 
   const filteredItems = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -198,24 +209,13 @@ export function InventoryTableClient({
   function submitMovement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (isDocumentLinesWriteGuardEnabled()) {
-      setResult({
-        ok: false,
-        message: DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
-        errors: [
-          "עדכון מלאי ידני מושהה עד שחיבור המלאי למודל שורות מסמך יושלם.",
-        ],
-      });
-      return;
-    }
-
     setResult(null);
 
     startTransition(async () => {
       const actionResult = await createInventoryMovementAction({
         productId,
         location: movementLocation,
-        movementType,
+        operation,
         quantity,
         notes,
       });
@@ -235,15 +235,13 @@ export function InventoryTableClient({
         <form className="inventory-movement-form" onSubmit={submitMovement}>
           <div className="inventory-section-heading">
             <h2>עדכון מלאי</h2>
-            <p>
-              {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
-            </p>
+            <p>רישום כניסה או יציאה מהמלאי דרך תנועת מלאי חדשה.</p>
           </div>
 
           <div className="inventory-movement-form__types" aria-label="סוג תנועת מלאי">
             {movementTypes.map((type) => {
               const Icon = type.icon;
-              const selected = movementType === type.value;
+              const selected = operation === type.value;
 
               return (
                 <button
@@ -251,7 +249,7 @@ export function InventoryTableClient({
                     selected ? " inventory-type-button--active" : ""
                   }`}
                   key={type.value}
-                  onClick={() => setMovementType(type.value)}
+                  onClick={() => setOperation(type.value)}
                   title={type.label}
                   type="button"
                 >
@@ -272,7 +270,7 @@ export function InventoryTableClient({
               >
                 {productOptions.map((product) => (
                   <option key={product.id} value={product.id}>
-                    {product.label}
+                    {productOptionLabel(product.label)}
                   </option>
                 ))}
               </select>
@@ -285,7 +283,7 @@ export function InventoryTableClient({
                 onChange={(event) => setMovementLocation(event.target.value)}
                 required
               >
-                {locations.map((itemLocation) => (
+                {movementLocations.map((itemLocation) => (
                   <option key={itemLocation} value={itemLocation}>
                     {itemLocation}
                   </option>
@@ -294,9 +292,9 @@ export function InventoryTableClient({
             </label>
 
             <label className="form-field">
-              <span>{isAdjustment ? "כמות בפועל בספירה" : "כמות"}</span>
+              <span>כמות</span>
               <input
-                min={isAdjustment ? "0" : "1"}
+                min="1"
                 step="1"
                 type="number"
                 value={quantity}
@@ -305,26 +303,24 @@ export function InventoryTableClient({
               />
             </label>
 
-            {isAdjustment ? (
+            {operation === "remove" ? (
               <div className="inventory-adjustment-preview">
-                <span>כמות מערכת</span>
+                <span>מלאי זמין במיקום</span>
                 <strong>{selectedInventoryItem?.availableQuantity ?? 0}</strong>
-                <small>
-                  תירשם תנועת כניסה או יציאה רק אם הכמות בפועל שונה מהמערכת.
-                </small>
               </div>
             ) : null}
 
             <label className="form-field form-field--wide">
-              <span>הערה</span>
+              <span>{operation === "remove" ? "סיבת הוצאה / הערה" : "הערה"}</span>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder={
-                  isAdjustment
-                    ? "לדוגמה: ספירת מלאי חודשית, נמצא במחסן"
-                    : "לדוגמה: קבלת סחורה, יציאה להתקנה"
+                  operation === "remove"
+                    ? "לדוגמה: תיקון הכנסת מלאי שגויה"
+                    : "לדוגמה: קבלת סחורה"
                 }
+                required={operation === "remove"}
               />
             </label>
           </div>
@@ -332,10 +328,10 @@ export function InventoryTableClient({
           <div className="inventory-movement-form__actions">
             <button
               className="primary-action"
-              disabled={isPending || isDocumentLinesWriteGuardEnabled()}
+              disabled={isPending}
               type="submit"
             >
-              {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
+              {isPending ? "שומר..." : "שמירה"}
             </button>
           </div>
 

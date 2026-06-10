@@ -9,7 +9,7 @@ import { createRecord } from "../write-client";
 export type CreateInventoryMovementInput = {
   productId: string;
   location: string;
-  movementType: string;
+  operation: "add" | "remove";
   quantity: string | number;
   notes: string | null;
 };
@@ -19,11 +19,18 @@ type CreatedInventoryMovementFields = {
   fldXNpU6Ga5KX9vic: string;
   fldseUfuzw9ktKuRy: string;
   fldRVE4yaMKwT5e1S: number;
+  fldFqsW6nY2Q5Guvd: string;
   fldoQUdwvZUId6wmd: string;
   fldQ8umCODTY80hBU?: string;
 };
 
-const allowedMovementTypes = ["כניסה", "יציאה", "התאמה", "העברה"];
+const operationToMovementType = {
+  add: "כניסה למלאי",
+  remove: "יציאה מהמלאי",
+} as const;
+
+const activeMovementStatus = "פעילה";
+const allowedLocations = ["חנות", "מחסן"];
 
 function normalizedText(value: string | null | undefined) {
   return value?.trim() ?? "";
@@ -38,7 +45,7 @@ function normalizeInput(input: CreateInventoryMovementInput) {
   return {
     productId: normalizedText(input.productId),
     location: normalizedText(input.location),
-    movementType: normalizedText(input.movementType),
+    operation: input.operation,
     quantity: normalizeQuantity(input.quantity),
     notes: normalizedText(input.notes) || null,
   };
@@ -55,19 +62,23 @@ function validateInput(input: ReturnType<typeof normalizeInput>) {
     errors.push("יש לבחור מיקום מלאי.");
   }
 
-  if (!allowedMovementTypes.includes(input.movementType)) {
-    errors.push("סוג תנועה לא תקין.");
+  if (!allowedLocations.includes(input.location)) {
+    errors.push("יש לבחור חנות או מחסן.");
+  }
+
+  if (input.operation !== "add" && input.operation !== "remove") {
+    errors.push("סוג פעולה לא תקין.");
   }
 
   if (
     typeof input.quantity !== "number" ||
-    (input.movementType === "התאמה" ? input.quantity < 0 : input.quantity <= 0)
+    input.quantity <= 0
   ) {
-    errors.push(
-      input.movementType === "התאמה"
-        ? "כמות בפועל חייבת להיות 0 או יותר."
-        : "כמות חייבת להיות גדולה מ-0.",
-    );
+    errors.push("כמות חייבת להיות גדולה מ-0.");
+  }
+
+  if (input.operation === "remove" && !input.notes) {
+    errors.push("יש לרשום סיבת הוצאה.");
   }
 
   return errors;
@@ -87,9 +98,8 @@ async function getCurrentInventoryQuantity(productId: string, location: string) 
 
 function movementNotes(
   notes: string | null,
-  adjustmentDetails: string | null,
 ) {
-  return [adjustmentDetails, notes].filter(Boolean).join(" | ") || null;
+  return notes?.trim() || null;
 }
 
 export async function getInventoryMovements() {
@@ -133,38 +143,30 @@ export async function createInventoryMovement(input: CreateInventoryMovementInpu
     };
   }
 
-  let movementType = normalizedInput.movementType;
-  let movementQuantity = quantity;
-  let adjustmentDetails: string | null = null;
-
-  if (normalizedInput.movementType === "התאמה") {
-    const currentQuantity = await getCurrentInventoryQuantity(
+  if (normalizedInput.operation === "remove") {
+    const availableQuantity = await getCurrentInventoryQuantity(
       normalizedInput.productId,
       normalizedInput.location,
     );
-    const delta = quantity - currentQuantity;
 
-    if (delta === 0) {
+    if (quantity > availableQuantity) {
       return {
-        ok: true as const,
-        message: "אין שינוי במלאי. הכמות בפועל כבר תואמת למערכת.",
+        ok: false as const,
+        message: "אין מספיק מלאי זמין במיקום שנבחר.",
       };
     }
-
-    movementType = delta > 0 ? "כניסה" : "יציאה";
-    movementQuantity = Math.abs(delta);
-    adjustmentDetails = `התאמת מלאי: כמות מערכת ${currentQuantity}, כמות בפועל ${quantity}`;
   }
 
   const fields: CreatedInventoryMovementFields = {
     fldG4ahYiyKWCGvoJ: [normalizedInput.productId],
     fldXNpU6Ga5KX9vic: normalizedInput.location,
-    fldseUfuzw9ktKuRy: movementType,
-    fldRVE4yaMKwT5e1S: movementQuantity,
+    fldseUfuzw9ktKuRy: operationToMovementType[normalizedInput.operation],
+    fldRVE4yaMKwT5e1S: quantity,
+    fldFqsW6nY2Q5Guvd: activeMovementStatus,
     fldoQUdwvZUId6wmd: new Date().toISOString().slice(0, 10),
   };
 
-  const notes = movementNotes(normalizedInput.notes, adjustmentDetails);
+  const notes = movementNotes(normalizedInput.notes);
 
   if (notes) {
     fields.fldQ8umCODTY80hBU = notes;
@@ -178,17 +180,13 @@ export async function createInventoryMovement(input: CreateInventoryMovementInpu
 
     return {
       ok: true as const,
-      message:
-        normalizedInput.movementType === "התאמה"
-          ? `התאמת המלאי נרשמה כתנועת ${movementType} של ${movementQuantity}.`
-          : "תנועת המלאי נרשמה בהצלחה.",
+      message: "המלאי עודכן בהצלחה",
       movementId: createdMovement.id,
     };
-  } catch (error) {
+  } catch {
     return {
       ok: false as const,
-      message: "עדכון המלאי נכשל.",
-      errors: [error instanceof Error ? error.message : "שגיאה לא ידועה."],
+      message: "לא הצלחנו לעדכן מלאי. בדוק מוצר, מיקום וכמות ונסה שוב.",
     };
   }
 }
