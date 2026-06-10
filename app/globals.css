@@ -716,6 +716,43 @@ textarea {
   resize: vertical;
 }
 
+.quote-lines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quote-line-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.quote-line-card__fields {
+  display: grid;
+  grid-template-columns:
+    minmax(130px, 0.8fr)
+    minmax(260px, 2fr)
+    minmax(110px, 0.6fr)
+    minmax(140px, 0.8fr);
+  align-items: end;
+  gap: 12px;
+}
+
+.quote-line-card__main-field {
+  min-width: 0;
+}
+
+.quote-line-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .daily-schedule {
   display: grid;
   gap: 14px;
@@ -2312,8 +2349,15 @@ textarea {
   .validation-grid,
   .exception-item,
   .inventory-control-panel,
-  .inventory-movement-form__grid {
+  .inventory-movement-form__grid,
+  .standalone-task-creator__fields,
+  .task-assignment-editor__fields,
+  .quote-line-card__fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quote-line-card__main-field {
+    grid-column: 1 / -1;
   }
 
   .readonly-grid,
@@ -2354,8 +2398,20 @@ textarea {
     .inventory-control-panel,
     .inventory-movement-form__types,
     .inventory-movement-form__grid,
+    .standalone-task-creator__fields,
+    .task-assignment-editor__fields,
+    .quote-line-card__fields,
     .daily-schedule__task {
     grid-template-columns: 1fr;
+  }
+
+  .quote-line-card__main-field {
+    grid-column: auto;
+  }
+
+  .quote-line-card__actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .filter-field--search,

@@ -8,7 +8,6 @@ export type CreateQuoteDocumentLineInput = {
   description?: string | null;
   quantity: number;
   unitPrice: number;
-  discountPercent?: number | null;
 };
 
 export type CreateQuoteWithDocumentLinesInput = {
@@ -49,7 +48,6 @@ type CreatedDocumentLineFields = {
   fld9OqOt6TCFsaHPW?: string[];
   fldaxQ0Ko91cTOTBb: number;
   fldDTYi0DZyEplom6: number;
-  fldgNmPUYcoFHatPu?: number;
   fldsTPKtaw1AYHN2A?: string;
   fld5o465AG04fQaxi?: string;
 };
@@ -85,10 +83,6 @@ function normalizeLine(line: CreateQuoteDocumentLineInput) {
     description: normalizedOptionalText(line.description),
     quantity: normalizedNumber(line.quantity),
     unitPrice: normalizedNumber(line.unitPrice),
-    discountPercent:
-      line.discountPercent === null || line.discountPercent === undefined
-        ? null
-        : normalizedNumber(line.discountPercent),
   };
 }
 
@@ -140,14 +134,6 @@ function validateInput(input: CreateQuoteWithDocumentLinesInput) {
       errors.push(`${lineLabel}: מחיר יחידה חייב להיות 0 או יותר.`);
     }
 
-    if (
-      line.discountPercent !== null &&
-      (typeof line.discountPercent !== "number" ||
-        line.discountPercent < 0 ||
-        line.discountPercent > 100)
-    ) {
-      errors.push(`${lineLabel}: הנחה חייבת להיות בין 0 ל-100.`);
-    }
   });
 
   return {
@@ -203,11 +189,6 @@ function documentLineFields(
 
   if (line.lineType === "סטנדרטי" && line.productId) {
     fields[airtableSchema.fields.documentLines.product] = [line.productId];
-  }
-
-  if (line.discountPercent !== null && line.discountPercent > 0) {
-    fields[airtableSchema.fields.documentLines.discountPercent] =
-      line.discountPercent / 100;
   }
 
   return fields;

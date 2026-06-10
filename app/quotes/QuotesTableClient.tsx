@@ -21,7 +21,6 @@ type DocumentLineDraft = {
   description: string;
   quantity: string;
   unitPrice: string;
-  discountPercent: string;
 };
 
 type OrderCreationRequestDraft = {
@@ -45,7 +44,6 @@ function newLineDraft(lineType: DocumentLineDraftType = "סטנדרטי"): Docum
     description: "",
     quantity: "1",
     unitPrice: "0",
-    discountPercent: "",
   };
 }
 
@@ -198,6 +196,10 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                 patch.lineType && patch.lineType !== "סטנדרטי"
                   ? ""
                   : patch.productId ?? line.productId,
+              description:
+                patch.lineType === "סטנדרטי"
+                  ? ""
+                  : patch.description ?? line.description,
             }
           : line,
       ),
@@ -318,13 +320,10 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
         lines: lineDrafts.map((line) => ({
           lineType: line.lineType,
           productId: line.lineType === "סטנדרטי" ? line.productId : null,
-          description: line.description || null,
+          description:
+            line.lineType === "סטנדרטי" ? null : line.description || null,
           quantity: numericFormValue(line.quantity),
           unitPrice: numericFormValue(line.unitPrice),
-          discountPercent:
-            line.discountPercent.trim() === ""
-              ? null
-              : numericFormValue(line.discountPercent),
         })),
       });
 
@@ -455,15 +454,6 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                 </select>
               </label>
 
-              <label className="filter-field standalone-task-creator__notes">
-                <span className="filter-label">הערות</span>
-                <textarea
-                  className="filter-input"
-                  name="notes"
-                  rows={3}
-                  disabled={isCreatingQuote}
-                />
-              </label>
             </div>
 
             <div className="task-assignment-editor">
@@ -474,138 +464,106 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                 </div>
               </div>
 
-              <div className="task-assignment-editor__fields standalone-task-creator__fields">
+              <div className="quote-lines-list">
                 {lineDrafts.map((line, index) => (
-                  <div className="task-assignment-editor__fields" key={line.id}>
-                    <label className="filter-field">
-                      <span className="filter-label">סוג שורה</span>
-                      <select
-                        className="filter-select"
-                        value={line.lineType}
-                        disabled={isCreatingQuote}
-                        onChange={(event) =>
-                          updateLineDraft(line.id, {
-                            lineType: event.target.value as DocumentLineDraftType,
-                          })
-                        }
-                      >
-                        <option value="סטנדרטי">סטנדרטי</option>
-                        <option value="ייצור אישי">ייצור אישי</option>
-                        <option value="מדידה">מדידה</option>
-                      </select>
-                    </label>
-
-                    {line.lineType === "סטנדרטי" ? (
-                      <label className="filter-field standalone-task-creator__notes">
-                        <span className="filter-label">מוצר</span>
+                  <div className="quote-line-card" key={line.id}>
+                    <div className="quote-line-card__fields">
+                      <label className="filter-field">
+                        <span className="filter-label">סוג שורה</span>
                         <select
                           className="filter-select"
-                          value={line.productId}
-                          required
+                          value={line.lineType}
                           disabled={isCreatingQuote}
                           onChange={(event) =>
                             updateLineDraft(line.id, {
-                              productId: event.target.value,
+                              lineType: event.target.value as DocumentLineDraftType,
                             })
                           }
                         >
-                          <option value="">בחר מוצר</option>
-                          {products.map((product) => (
-                            <option value={product.id} key={product.id}>
-                              {product.selectLabel}
-                            </option>
-                          ))}
+                          <option value="סטנדרטי">סטנדרטי</option>
+                          <option value="ייצור אישי">ייצור אישי</option>
+                          <option value="מדידה">מדידה</option>
                         </select>
                       </label>
-                    ) : (
-                      <label className="filter-field standalone-task-creator__notes">
-                        <span className="filter-label">תיאור שורה</span>
-                        <textarea
+
+                      {line.lineType === "סטנדרטי" ? (
+                        <label className="filter-field quote-line-card__main-field">
+                          <span className="filter-label">מוצר</span>
+                          <select
+                            className="filter-select"
+                            value={line.productId}
+                            required
+                            disabled={isCreatingQuote}
+                            onChange={(event) =>
+                              updateLineDraft(line.id, {
+                                productId: event.target.value,
+                              })
+                            }
+                          >
+                            <option value="">בחר מוצר</option>
+                            {products.map((product) => (
+                              <option value={product.id} key={product.id}>
+                                {product.selectLabel}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        <label className="filter-field quote-line-card__main-field">
+                          <span className="filter-label">תיאור שורה</span>
+                          <textarea
+                            className="filter-input"
+                            rows={2}
+                            value={line.description}
+                            required
+                            disabled={isCreatingQuote}
+                            onChange={(event) =>
+                              updateLineDraft(line.id, {
+                                description: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+
+                      <label className="filter-field">
+                        <span className="filter-label">כמות</span>
+                        <input
                           className="filter-input"
-                          rows={2}
-                          value={line.description}
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={line.quantity}
                           required
                           disabled={isCreatingQuote}
                           onChange={(event) =>
                             updateLineDraft(line.id, {
-                              description: event.target.value,
+                              quantity: event.target.value,
                             })
                           }
                         />
                       </label>
-                    )}
 
-                    {line.lineType === "סטנדרטי" ? (
-                      <label className="filter-field standalone-task-creator__notes">
-                        <span className="filter-label">תיאור לתצוגה</span>
+                      <label className="filter-field">
+                        <span className="filter-label">מחיר יחידה</span>
                         <input
                           className="filter-input"
-                          value={line.description}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.unitPrice}
+                          required
                           disabled={isCreatingQuote}
                           onChange={(event) =>
                             updateLineDraft(line.id, {
-                              description: event.target.value,
+                              unitPrice: event.target.value,
                             })
                           }
                         />
                       </label>
-                    ) : null}
+                    </div>
 
-                    <label className="filter-field">
-                      <span className="filter-label">כמות</span>
-                      <input
-                        className="filter-input"
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={line.quantity}
-                        required
-                        disabled={isCreatingQuote}
-                        onChange={(event) =>
-                          updateLineDraft(line.id, {
-                            quantity: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-
-                    <label className="filter-field">
-                      <span className="filter-label">מחיר יחידה</span>
-                      <input
-                        className="filter-input"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={line.unitPrice}
-                        required
-                        disabled={isCreatingQuote}
-                        onChange={(event) =>
-                          updateLineDraft(line.id, {
-                            unitPrice: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-
-                    <label className="filter-field">
-                      <span className="filter-label">הנחה %</span>
-                      <input
-                        className="filter-input"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={line.discountPercent}
-                        disabled={isCreatingQuote}
-                        onChange={(event) =>
-                          updateLineDraft(line.id, {
-                            discountPercent: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-
-                    <div className="task-assignment-editor__actions">
+                    <div className="quote-line-card__actions">
                       <span className="muted-text">שורה {index + 1}</span>
                       <button
                         className="task-row-actions__secondary"
@@ -636,6 +594,16 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                 </button>
               </div>
             </div>
+
+            <label className="filter-field standalone-task-creator__notes">
+              <span className="filter-label">הערות</span>
+              <textarea
+                className="filter-input"
+                name="notes"
+                rows={3}
+                disabled={isCreatingQuote}
+              />
+            </label>
 
             <div className="task-assignment-editor__actions">
               <button
