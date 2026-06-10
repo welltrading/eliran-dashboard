@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 import {
   getTaskInstallerOptions,
   getTasks,
@@ -41,6 +42,10 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
         title="משימות"
         description="מסך עבודה לתיאום משימות, מתקינים ולוחות זמנים."
       />
+
+      <div className="page-actions">
+        <RefreshDataButton />
+      </div>
 
       {orderId ? (
         <Card className="validation-card">

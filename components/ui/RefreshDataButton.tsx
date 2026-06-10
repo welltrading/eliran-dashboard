@@ -14,7 +14,7 @@ export function RefreshDataButton() {
       onClick={() => startRefresh(() => router.refresh())}
       disabled={isRefreshing}
     >
-      {isRefreshing ? "מרענן..." : "רענון נתונים"}
+      {isRefreshing ? "מרענן..." : "ריענון נתונים"}
     </button>
   );
 }

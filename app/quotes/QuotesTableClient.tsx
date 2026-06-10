@@ -98,6 +98,21 @@ function numericFormValue(value: string) {
   return normalized ? Number(normalized) : 0;
 }
 
+function validExternalUrl(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function hasStandardDocumentLine(quote: Quote) {
   return quote.documentLines.some((line) => line.lineType === "סטנדרטי");
 }
@@ -712,6 +727,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
             <tbody>
               {filteredQuotes.map((quote) => {
                 const hasDocumentLines = quote.documentLines.length > 0;
+                const pdfUrl = validExternalUrl(quote.ezDocUrl);
 
                 return (
                   <Fragment key={quote.id}>
@@ -731,11 +747,15 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                         ) : null}
                       </div>
                     </td>
-                    <td>{quote.ezDocUrl ? "כן" : "לא"}</td>
+                    <td>{pdfUrl || quote.ezDocNumber ? "כן" : "לא"}</td>
                     <td>{quote.ezDocNumber ?? "-"}</td>
                     <td>
-                      {quote.ezDocUrl ? (
-                        <a href={quote.ezDocUrl} target="_blank" rel="noreferrer">
+                      {pdfUrl ? (
+                        <a
+                          href={pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           פתיחת PDF
                         </a>
                       ) : (
@@ -747,6 +767,9 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                         recordId={quote.id}
                         hasDocumentLines={hasDocumentLines}
                         ezDocUrl={quote.ezDocUrl}
+                        ezDocNumber={quote.ezDocNumber}
+                        ezDocStatus={quote.status}
+                        ezDocError={quote.ezDocError}
                       />
                     </td>
                   </tr>

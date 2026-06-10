@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 import {
   getInstallerRatesControlData,
   getInstallerMonthlyPaymentReport,
@@ -78,6 +79,10 @@ export default async function InstallersPage({ searchParams }: InstallersPagePro
         title="מתקינים ותשלומים"
         description="מרחב העבודה לאישור ביצוע ידני, דוח תשלומים חודשי וסגירת תשלום למתקינים."
       />
+
+      <div className="page-actions">
+        <RefreshDataButton />
+      </div>
 
       <Card className="installers-routing-card">
         <div className="card__body installers-routing">

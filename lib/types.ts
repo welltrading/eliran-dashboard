@@ -466,6 +466,7 @@ export type Quote = {
   quoteTypeFromDocumentLines: string | null;
   ezDocUrl: string | null;
   ezDocNumber: string | null;
+  ezDocError: string | null;
   leadSource: string | null;
   createOrderUrl: string | null;
   productIds: string[];

@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 import { getInstallerMonthlyPaymentsPageReport } from "@/lib/airtable/services/installers";
 import { PaymentsClient } from "./PaymentsClient";
 
@@ -34,6 +35,10 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
         title="תשלומי מתקינים"
         description="סוף חודש: כמה פתוח לתשלום, כמה כבר שולם, ולמי."
       />
+
+      <div className="page-actions">
+        <RefreshDataButton />
+      </div>
 
       <div className="grid stats-grid payments-summary">
         <Card>

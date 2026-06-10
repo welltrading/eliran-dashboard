@@ -6,6 +6,7 @@ import {
 } from "@/lib/airtable/services/inventory";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 import {
   InventoryMovementsTableClient,
   type InventoryMovementTableItem,
@@ -68,6 +69,9 @@ export default async function InventoryMovementsPage() {
   return (
     <div className="page page--wide">
       <PageHeader title="תנועות מלאי" description="כניסות, יציאות, העברות והתאמות מלאי." />
+      <div className="page-actions">
+        <RefreshDataButton />
+      </div>
       <Card className="validation-card">
         <div className="card__body validation-list">
           <h2>Validation</h2>

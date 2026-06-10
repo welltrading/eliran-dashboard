@@ -1,6 +1,7 @@
 import { getDocumentLines } from "@/lib/airtable/services/document-lines";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,9 @@ export default async function OrderLinesPage() {
   return (
     <div className="page page--wide">
       <PageHeader title="שורות מסמך" description="פירוט פריטים ושירותים מתוך טבלת שורות מסמך." />
+      <div className="page-actions">
+        <RefreshDataButton />
+      </div>
       <Card>
         <div className="table-wrap">
           {documentLines.length > 0 ? (

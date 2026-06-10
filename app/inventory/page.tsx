@@ -6,6 +6,7 @@ import {
 import { getProducts } from "@/lib/airtable/services/products";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 import {
   InventoryTableClient,
   type InventoryLocationSummary,
@@ -89,6 +90,9 @@ export default async function InventoryPage() {
         title="ניהול מלאי"
         description="דגמים, מיקומים, חריגות ועדכוני כניסה ויציאה מהמלאי."
       />
+      <div className="page-actions">
+        <RefreshDataButton />
+      </div>
       <div className="grid stats-grid inventory-summary">
         <Card>
           <div className="card__body stat-card">

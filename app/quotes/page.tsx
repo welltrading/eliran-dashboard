@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 import { getProductsForQuoteForm } from "@/lib/airtable/services/products";
 import { getQuotes } from "@/lib/airtable/services/quotes";
 import { QuotesTableClient } from "./QuotesTableClient";
@@ -18,6 +19,10 @@ export default async function QuotesPage() {
         title="הצעות מחיר"
         description="מסך עבודה להצעות מחיר, לקוחות והפקת PDF."
       />
+
+      <div className="page-actions">
+        <RefreshDataButton />
+      </div>
 
       <Card>
         <QuotesTableClient quotes={quotes} products={products} />
