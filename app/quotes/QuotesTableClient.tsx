@@ -77,6 +77,14 @@ function documentLineLabel(quote: Quote) {
   return `${quote.documentLines.length} פריטים`;
 }
 
+function documentLineText(line: Quote["documentLines"][number]) {
+  return line.displayDescription || line.description || "פריט ללא תיאור";
+}
+
+function documentLinePreview(line: Quote["documentLines"][number]) {
+  return `${documentLineText(line)} · ${line.quantity} × ${formatCurrency(line.unitPrice)}`;
+}
+
 function matchesStatus(status: string, filter: StatusFilter) {
   const normalized = status.trim();
 
@@ -130,7 +138,7 @@ function canCreateOrderCreationRequest(quote: Quote) {
 
 function newOrderCreationRequestDraft(quote: Quote): OrderCreationRequestDraft {
   return {
-    paymentType: "מקדמה 60%",
+    paymentType: "תשלום מלא",
     paymentMethod: "",
     source: quote.leadSource ?? "",
     standardExitLocation: "",
@@ -201,6 +209,9 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
     useState<string | null>(null);
   const [requestDrafts, setRequestDrafts] = useState<
     Record<string, OrderCreationRequestDraft>
+  >({});
+  const [expandedQuoteLineIds, setExpandedQuoteLineIds] = useState<
+    Record<string, boolean>
   >({});
 
   const filteredQuotes = useMemo(() => {
@@ -277,7 +288,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
       ...currentDrafts,
       [quoteId]: {
         ...(currentDrafts[quoteId] ?? {
-          paymentType: "מקדמה 60%",
+          paymentType: "תשלום מלא",
           paymentMethod: "",
           source: "",
           standardExitLocation: "",
@@ -285,6 +296,13 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
         }),
         ...patch,
       },
+    }));
+  }
+
+  function toggleQuoteLineDetails(quoteId: string) {
+    setExpandedQuoteLineIds((currentExpandedIds) => ({
+      ...currentExpandedIds,
+      [quoteId]: !currentExpandedIds[quoteId],
     }));
   }
 
@@ -741,6 +759,8 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
               {filteredQuotes.map((quote) => {
                 const hasDocumentLines = quote.documentLines.length > 0;
                 const pdfUrl = validExternalUrl(quote.ezDocUrl);
+                const isLineDetailsExpanded =
+                  expandedQuoteLineIds[quote.id] === true;
 
                 return (
                   <Fragment key={quote.id}>
@@ -753,8 +773,42 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                     <td>{formatCurrency(displayQuoteTotal(quote))}</td>
                     <td>{quote.status || "-"}</td>
                     <td>
-                      <div className="order-payment-summary">
-                        <span>{documentLineLabel(quote)}</span>
+                      <div
+                        className="order-payment-summary"
+                        style={{ maxWidth: "320px", whiteSpace: "normal" }}
+                      >
+                        {hasDocumentLines ? (
+                          <div style={{ display: "grid", gap: "6px" }}>
+                            <button
+                              className="task-row-actions__secondary"
+                              type="button"
+                              onClick={() => toggleQuoteLineDetails(quote.id)}
+                              aria-expanded={isLineDetailsExpanded}
+                              style={{ justifySelf: "start" }}
+                            >
+                              {quote.documentLines.length} פריטים{" "}
+                              {isLineDetailsExpanded ? "▲" : "▼"}
+                            </button>
+                            {isLineDetailsExpanded ? (
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gap: "4px",
+                                  maxWidth: "280px",
+                                  color: "var(--text)",
+                                }}
+                              >
+                                {quote.documentLines.map((line) => (
+                                  <span key={line.id}>
+                                    {documentLinePreview(line)}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span>{documentLineLabel(quote)}</span>
+                        )}
                         {!hasDocumentLines ? (
                           <span className="badge badge--warning">אין פריטים</span>
                         ) : null}
@@ -830,7 +884,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                                 className="filter-select"
                                 value={
                                   requestDrafts[quote.id]?.paymentType ??
-                                  "מקדמה 60%"
+                                  "תשלום מלא"
                                 }
                                 disabled={submittingRequestQuoteId === quote.id}
                                 onChange={(event) =>
@@ -841,8 +895,8 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                                   })
                                 }
                               >
-                                <option value="מקדמה 60%">מקדמה 60%</option>
                                 <option value="תשלום מלא">תשלום מלא</option>
+                                <option value="מקדמה 60%">מקדמה 60%</option>
                               </select>
                             </label>
 
