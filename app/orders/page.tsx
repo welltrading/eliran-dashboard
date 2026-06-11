@@ -1,4 +1,5 @@
 import { getOrders } from "@/lib/airtable/services/orders";
+import { getProductsForQuoteForm } from "@/lib/airtable/services/products";
 import {
   getTaskInstallerOptions,
   getTaskTypeOptions,
@@ -6,15 +7,17 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
+import { CreateStandaloneOrderFormClient } from "./CreateStandaloneOrderFormClient";
 import { OrdersTableClient } from "./OrdersTableClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
-  const [orders, installerOptions, taskTypeOptions] = await Promise.all([
+  const [orders, installerOptions, taskTypeOptions, products] = await Promise.all([
     getOrders(),
     getTaskInstallerOptions(),
     getTaskTypeOptions(),
+    getProductsForQuoteForm(),
   ]);
 
   return (
@@ -24,6 +27,7 @@ export default async function OrdersPage() {
         <RefreshDataButton />
       </div>
       <Card>
+        <CreateStandaloneOrderFormClient products={products} />
         <div className="table-wrap orders-table-wrapper">
           {orders.length > 0 ? (
             <OrdersTableClient

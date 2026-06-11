@@ -92,14 +92,22 @@ export type RawInstallerMonthlyPaymentFields = {
 export type RawOrderFields = {
   fldDrP4MqsxV6EtJd?: unknown;
   fldZEobEKEQtMtoGV?: unknown;
+  fldDyAvpomUhSkvKw?: unknown;
   fldk7OdnVLITahJxd?: unknown;
+  fldlqpov0VVFGts1M?: unknown;
   fldzNnG3a9uojQPyO?: unknown;
+  fldYd2ZBbEfcqClqr?: unknown;
+  fld5tEZDfCloihZh6?: unknown;
+  fldBeIA5vZa5M0TXK?: unknown;
+  fldlnJJUi8s3jTrBW?: unknown;
   fld5bh56XRJGJhrsz?: unknown;
   flduurO6CcPQx6oya?: unknown;
   fldwvbnGd8e3PAU7d?: unknown;
   flde2no9Qoof141vN?: unknown;
   flddZQjojnGZeZ5By?: unknown;
   fldPN0eZPJuSJSh8o?: unknown;
+  fldWzlNdgHiiIzYrl?: unknown;
+  fldUealfvxq803w4h?: unknown;
   fldoBnRqI3ZTZXorO?: unknown;
   fldOAbx5iIaFAihvt?: unknown;
   fldRZSAngZ2MzRg9v?: unknown;
@@ -107,6 +115,7 @@ export type RawOrderFields = {
   fldoXRciteMB9WdfP?: unknown;
   fld9OEARVSvYDuEdR?: unknown;
   fldFRK1Kz26jE99xR?: unknown;
+  fldMXnAf7Pzg5Vc9F?: unknown;
   fldIJzxGrwPaDNACs?: unknown;
   fldws1tElgJlhMLR7?: unknown;
   fldJlbQJWexlStXRn?: unknown;
@@ -154,6 +163,7 @@ export type RawDocumentLineFields = {
   fldDsTolgtpHFWkP1?: unknown;
   fldyKIV6tKKkqT2jn?: unknown;
   fldPbgcN4NvRtRMgp?: unknown;
+  fldsTPKtaw1AYHN2A?: unknown;
   fld5o465AG04fQaxi?: unknown;
   fldegUuhoVtTLCMRa?: unknown;
   fldsdyswewYXl88g6?: unknown;

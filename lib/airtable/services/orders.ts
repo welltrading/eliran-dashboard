@@ -2,37 +2,43 @@ import "server-only";
 import type {
   CustomProductionStatus,
   DocumentLine,
-  OrderStatus,
   OrderType,
 } from "@/lib/types";
 import { selectRecords } from "../client";
 import { mapOrder } from "../mappers/orders";
 import type { RawOrderFields, RawTaskFields } from "../raw-types";
+import { airtableSchema } from "../schema";
 import { airtableTables } from "../tables";
-import { createRecord, updateRecord } from "../write-client";
+import { createRecord, deleteRecord, updateRecord } from "../write-client";
 import { getDocumentLines } from "./document-lines";
 import { getOrderCreationRequests } from "./order-creation-requests";
+
+export type StandaloneOrderLineType =
+  | "סטנדרטי"
+  | "ייצור אישי"
+  | "מדידה"
+  | "עבודה / התקנה"
+  | "פירוק"
+  | "תוספת";
+
+export type CreateStandaloneOrderLineInput = {
+  lineType: StandaloneOrderLineType;
+  productId?: string | null;
+  description?: string | null;
+  quantity: string | number | null;
+  unitPrice: string | number | null;
+  exitLocation?: "חנות" | "מחסן" | null;
+};
 
 export type CreateStandaloneOrderInput = {
   customerName: string;
   phone: string;
   address: string;
-  orderType: OrderType;
-  orderStatus: OrderStatus;
-  productDescription: string | null;
-  quantity: string | number | null;
-  width: string | number | null;
-  depth: string | number | null;
-  height: string | number | null;
-  totalPrice: string | number | null;
   paymentMode: string | null;
-  measurementRequired: string | null;
-  dismantlingOption: string | null;
-  glassType: string | null;
-  hardwareColor: string | null;
   paymentMethod: string | null;
-  paymentApproved: boolean;
+  orderStatus: string | null;
   notes: string | null;
+  lines: CreateStandaloneOrderLineInput[];
 };
 
 export type UpdateCustomProductionInput = {
@@ -44,28 +50,28 @@ export type UpdateCustomProductionInput = {
 };
 
 type CreatedOrderFields = {
-  fldZEobEKEQtMtoGV?: string;
-  fld5bh56XRJGJhrsz?: string;
-  fldzNnG3a9uojQPyO?: string;
+  fld5tEZDfCloihZh6?: string;
+  fldBeIA5vZa5M0TXK?: string;
+  fldlnJJUi8s3jTrBW?: string;
   flduurO6CcPQx6oya?: string;
   fldwvbnGd8e3PAU7d?: string;
   fldFRK1Kz26jE99xR?: string;
   fldMXnAf7Pzg5Vc9F?: string;
-  fldvuJBwo3Qb4ub7p?: string;
-  flddmlzT9ZHk5spa1?: number;
-  fldgdC7Zv9XWkaxqi?: number;
-  fldLJITSyspOnKcZF?: number;
-  fldAFUIPpQVOPcfNm?: number;
-  fldcsD7TEjjYB6kz3?: number;
   fldPN0eZPJuSJSh8o?: string;
-  fldoBnRqI3ZTZXorO?: number;
-  fldOAbx5iIaFAihvt?: number;
-  fldcx7cPuZH57bMg1?: string;
-  fldGNc09zWTOcLc6s?: string;
-  fld5Wn57UvhksY0Ax?: string;
-  fldPBnhKedXDftVBJ?: string;
+  fldWzlNdgHiiIzYrl?: string;
   fldUealfvxq803w4h?: string;
-  fldBvprcQWNtsC6jt?: boolean;
+};
+
+type CreatedDocumentLineFields = {
+  fldc33QppEyN8Yaxq?: string;
+  fldAoGQVj0sylIUAr: string;
+  fldLfzqMk98VZmts3: string[];
+  fld9OqOt6TCFsaHPW?: string[];
+  fldaxQ0Ko91cTOTBb: number;
+  fldDTYi0DZyEplom6: number;
+  fldPbgcN4NvRtRMgp?: string;
+  fldsTPKtaw1AYHN2A: string;
+  fld5o465AG04fQaxi: string;
 };
 
 type UpdatedCustomProductionFields = {
@@ -83,37 +89,41 @@ type MinimalTaskRecord = {
   >;
 };
 
-const orderTypes: OrderType[] = ["סטנדרטי", "ייצור אישי"];
-const orderStatuses: OrderStatus[] = [
-  "חדשה",
-  "בהכנה",
-  "ממתינה לתשלום",
-  "מוכנה להתקנה",
-  "הושלמה",
-  "בוטלה",
+const airtableRecordIdPattern = /^rec[A-Za-z0-9]{14}$/;
+const allowedOrderTypes: OrderType[] = ["סטנדרטי", "ייצור אישי", "מעורב"];
+const orderStatuses = [
+  "חדש",
+  "ממתין למדידה",
+  "אחרי מדידה",
+  "ממתין לאישור",
+  "ממתין לתשלום",
+  "הוזמן מהמפעל-ביצור",
+  "מוכן להתקנה",
+  "הותקן",
+  "סגור",
+  "לתיאום התקנה",
+  "הומרה להזמנה",
+  "בוטל",
+  "ממתין לשרטוטים",
+  "שרטוטים מוכנים",
 ];
-const airtableOrderStatusByUiStatus: Record<OrderStatus, string> = {
-  חדשה: "חדש",
-  בהכנה: "חדש",
-  "ממתינה לתשלום": "ממתין לתשלום",
-  "מוכנה להתקנה": "מוכן להתקנה",
-  הושלמה: "סגור",
-  בוטלה: "בוטל",
-};
-const measurementRequiredOptions = ["כן", "לא"];
-const dismantlingOptions = ["נדרש פירוק", "לא נדרש פירוק"];
-const glassTypes = [
-  "גרניט",
-  "זכוכית שקופה",
-  "פסים",
-  "שקופה",
-  "ברונזה",
-  "מושחר",
-  "גלינה",
-];
-const hardwareColors = ["גרפיט", "לבן", "ניקל", "שחור", "זהב"];
 const paymentMethods = ["העברה בנקאית", "אשראי", "מזומן", "ביט", "פייבוקס"];
 const paymentModes = ["מקדמה 60%", "תשלום מלא"];
+const standaloneLineTypes: StandaloneOrderLineType[] = [
+  "סטנדרטי",
+  "ייצור אישי",
+  "מדידה",
+  "עבודה / התקנה",
+  "פירוק",
+  "תוספת",
+];
+const standardExitLocations = ["חנות", "מחסן"];
+const documentLineSourceFromApp = "נוצרה באפליקציה";
+const activeDocumentLineStatus = "פעילה";
+const paymentStatusByMode: Record<string, string> = {
+  "מקדמה 60%": "שולם 60%",
+  "תשלום מלא": "שולם מלא",
+};
 const customProductionStatuses: CustomProductionStatus[] = [
   "ממתין למדידה",
   "מדידה תואמה",
@@ -225,51 +235,45 @@ function normalizeSelectValue(
     : null;
 }
 
-function normalizeInput(input: CreateStandaloneOrderInput): CreateStandaloneOrderInput {
+function normalizeLine(line: CreateStandaloneOrderLineInput) {
+  return {
+    lineType: normalizedText(line.lineType) as StandaloneOrderLineType,
+    productId: normalizedText(line.productId) || null,
+    description: normalizedText(line.description) || null,
+    quantity: normalizeOptionalNumber(line.quantity),
+    unitPrice: normalizeOptionalNumber(line.unitPrice),
+    exitLocation: normalizeSelectValue(line.exitLocation, standardExitLocations),
+  };
+}
+
+function normalizeInput(input: CreateStandaloneOrderInput) {
+  const paymentMode = normalizeSelectValue(input.paymentMode, paymentModes);
+
   return {
     customerName: normalizedText(input.customerName),
     phone: normalizedText(input.phone),
     address: normalizedText(input.address),
-    orderType: input.orderType,
-    orderStatus: input.orderStatus,
-    productDescription: normalizedText(input.productDescription) || null,
-    quantity: normalizeOptionalNumber(input.quantity),
-    width: normalizeOptionalNumber(input.width),
-    depth: normalizeOptionalNumber(input.depth),
-    height: normalizeOptionalNumber(input.height),
-    totalPrice: normalizeOptionalNumber(input.totalPrice),
-    paymentMode: normalizeSelectValue(input.paymentMode, paymentModes),
-    measurementRequired: normalizeSelectValue(
-      input.measurementRequired,
-      measurementRequiredOptions,
-    ),
-    dismantlingOption: normalizeSelectValue(
-      input.dismantlingOption,
-      dismantlingOptions,
-    ),
-    glassType: normalizeSelectValue(input.glassType, glassTypes),
-    hardwareColor: normalizeSelectValue(input.hardwareColor, hardwareColors),
+    orderStatus: normalizeSelectValue(input.orderStatus, orderStatuses) ?? "חדש",
+    paymentMode,
+    paymentStatus: paymentMode ? paymentStatusByMode[paymentMode] ?? null : null,
     paymentMethod: normalizeSelectValue(input.paymentMethod, paymentMethods),
-    paymentApproved: input.paymentApproved === true,
     notes: normalizedText(input.notes) || null,
+    lines: input.lines.map(normalizeLine),
   };
 }
 
-function paymentAmounts(totalPrice: number, paymentMode: string) {
-  if (paymentMode === "תשלום מלא") {
-    return {
-      advancePaymentAmount: totalPrice,
-      remainingPaymentAmount: 0,
-    };
+function orderTypeFromLines(lines: Array<ReturnType<typeof normalizeLine>>): OrderType {
+  const hasStandard = lines.some((line) => line.lineType === "סטנדרטי");
+  const hasNonStandard = lines.some((line) => line.lineType !== "סטנדרטי");
+
+  if (hasStandard && hasNonStandard) {
+    return "מעורב";
   }
 
-  return {
-    advancePaymentAmount: totalPrice * 0.6,
-    remainingPaymentAmount: totalPrice * 0.4,
-  };
+  return hasStandard ? "סטנדרטי" : "ייצור אישי";
 }
 
-function validateInput(input: CreateStandaloneOrderInput) {
+function validateInput(input: ReturnType<typeof normalizeInput>) {
   const errors: string[] = [];
 
   if (!input.customerName) {
@@ -284,65 +288,92 @@ function validateInput(input: CreateStandaloneOrderInput) {
     errors.push("כתובת היא שדה חובה.");
   }
 
-  if (!orderTypes.includes(input.orderType)) {
-    errors.push("סוג הזמנה לא תקין.");
-  }
-
-  if (!orderStatuses.includes(input.orderStatus)) {
+  if (!input.orderStatus) {
     errors.push("סטטוס הזמנה לא תקין.");
   }
 
-  if (typeof input.totalPrice === "number" && !input.paymentMode) {
+  if (!input.paymentMode) {
     errors.push("יש לבחור תשלום מלא או מקדמה 60%.");
   }
 
-  if (input.orderType === "ייצור אישי") {
-    if (!input.productDescription) {
-      errors.push("תיאור מוצר הוא שדה חובה בהזמנת ייצור אישי.");
+  if (!input.paymentStatus) {
+    errors.push("סטטוס תשלום מחושב אינו תקין.");
+  }
+
+  if (!input.paymentMethod) {
+    errors.push("יש לבחור אמצעי תשלום.");
+  }
+
+  if (input.lines.length === 0) {
+    errors.push("יש להוסיף לפחות שורת מסמך אחת.");
+  }
+
+  input.lines.forEach((line, index) => {
+    const lineLabel = `שורה ${index + 1}`;
+
+    if (!standaloneLineTypes.includes(line.lineType)) {
+      errors.push(`${lineLabel}: סוג שורה לא תקין.`);
     }
 
-    if (typeof input.quantity !== "number" || input.quantity <= 0) {
-      errors.push("כמות חייבת להיות גדולה מ-0.");
+    if (line.lineType === "סטנדרטי" && !airtableRecordIdPattern.test(line.productId ?? "")) {
+      errors.push(`${lineLabel}: שורת סטנדרטי חייבת מוצר.`);
     }
 
-    if (typeof input.width !== "number" || input.width <= 0) {
-      errors.push("מידות לקוח רוחב חייב להיות גדול מ-0.");
+    if (line.lineType !== "סטנדרטי" && !line.description) {
+      errors.push(`${lineLabel}: שורה לא סטנדרטית חייבת תיאור.`);
     }
 
-    if (typeof input.depth !== "number" || input.depth <= 0) {
-      errors.push("מידות לקוח עומק חייב להיות גדול מ-0.");
+    if (typeof line.quantity !== "number" || line.quantity <= 0) {
+      errors.push(`${lineLabel}: כמות חייבת להיות גדולה מ-0.`);
     }
 
-    if (typeof input.height !== "number" || input.height <= 0) {
-      errors.push("גובה מקלחון חייב להיות גדול מ-0.");
+    if (typeof line.unitPrice !== "number" || line.unitPrice < 0) {
+      errors.push(`${lineLabel}: מחיר יחידה חייב להיות 0 או יותר.`);
     }
 
-    if (typeof input.totalPrice !== "number" || input.totalPrice < 0) {
-      errors.push("מחיר בשקלים חייב להיות 0 או יותר.");
+    if (line.lineType === "סטנדרטי" && !line.exitLocation) {
+      errors.push(`${lineLabel}: מיקום יציאה הוא שדה חובה לשורה סטנדרטית.`);
     }
 
-    if (!input.paymentMode) {
-      errors.push("תשלום מלא / מקדמה 60% הוא שדה חובה.");
+    if (line.lineType !== "סטנדרטי" && line.exitLocation) {
+      errors.push(`${lineLabel}: מיקום יציאה מותר רק לשורה סטנדרטית.`);
     }
+  });
 
-    if (!input.measurementRequired) {
-      errors.push("נדרשת מדידה הוא שדה חובה.");
-    }
+  const orderType = input.lines.length > 0 ? orderTypeFromLines(input.lines) : null;
 
-    if (!input.dismantlingOption) {
-      errors.push("אפשרות פירוק היא שדה חובה.");
-    }
-
-    if (!input.glassType) {
-      errors.push("סוג זכוכית הוא שדה חובה.");
-    }
-
-    if (!input.hardwareColor) {
-      errors.push("צבע פרזול הוא שדה חובה.");
-    }
+  if (orderType && !allowedOrderTypes.includes(orderType)) {
+    errors.push("סוג הזמנה מחושב אינו תקין.");
   }
 
   return errors;
+}
+
+function documentLineFields(
+  orderId: string,
+  line: ReturnType<typeof normalizeLine>,
+) {
+  const fields: CreatedDocumentLineFields = {
+    [airtableSchema.fields.documentLines.lineType]: line.lineType,
+    [airtableSchema.fields.documentLines.order]: [orderId],
+    [airtableSchema.fields.documentLines.quantity]: line.quantity ?? 0,
+    [airtableSchema.fields.documentLines.unitPrice]: line.unitPrice ?? 0,
+    [airtableSchema.fields.documentLines.source]: documentLineSourceFromApp,
+    [airtableSchema.fields.documentLines.lineStatus]: activeDocumentLineStatus,
+  };
+
+  if (line.lineType === "סטנדרטי") {
+    if (line.productId) {
+      fields[airtableSchema.fields.documentLines.product] = [line.productId];
+    }
+    fields[airtableSchema.fields.documentLines.exitLocation] =
+      line.exitLocation ?? undefined;
+    return fields;
+  }
+
+  fields[airtableSchema.fields.documentLines.description] =
+    line.description ?? line.lineType;
+  return fields;
 }
 
 export async function getOrders() {
@@ -405,93 +436,131 @@ export async function createStandaloneOrder(input: CreateStandaloneOrderInput) {
     };
   }
 
+  const orderType = orderTypeFromLines(normalizedInput.lines);
   const fields: CreatedOrderFields = {
-    fldZEobEKEQtMtoGV: normalizedInput.customerName,
-    fld5bh56XRJGJhrsz: normalizedInput.phone,
-    fldzNnG3a9uojQPyO: normalizedInput.address,
-    flduurO6CcPQx6oya: normalizedInput.orderType,
-    fldwvbnGd8e3PAU7d:
-      airtableOrderStatusByUiStatus[normalizedInput.orderStatus],
-    fldMXnAf7Pzg5Vc9F: "Dashboard",
+    [airtableSchema.fields.orders.manualCustomerName]: normalizedInput.customerName,
+    [airtableSchema.fields.orders.manualPhone]: normalizedInput.phone,
+    [airtableSchema.fields.orders.manualAddress]: normalizedInput.address,
+    [airtableSchema.fields.orders.orderType]: orderType,
+    [airtableSchema.fields.orders.status]: normalizedInput.orderStatus,
+    [airtableSchema.fields.orders.paymentMode]: normalizedInput.paymentMode ?? undefined,
+    [airtableSchema.fields.orders.paymentStatus]:
+      normalizedInput.paymentStatus ?? undefined,
+    [airtableSchema.fields.orders.paymentMethod]:
+      normalizedInput.paymentMethod ?? undefined,
+    [airtableSchema.fields.orders.creationSource]: "Dashboard",
   };
 
   if (normalizedInput.notes) {
-    fields.fldFRK1Kz26jE99xR = normalizedInput.notes;
+    fields[airtableSchema.fields.orders.notes] = normalizedInput.notes;
   }
 
-  if (normalizedInput.paymentMethod) {
-    fields.fldUealfvxq803w4h = normalizedInput.paymentMethod;
-  }
-
-  if (normalizedInput.paymentApproved) {
-    fields.fldBvprcQWNtsC6jt = true;
-  }
-
-  if (
-    typeof normalizedInput.totalPrice === "number" &&
-    normalizedInput.paymentMode
-  ) {
-    const calculatedPayment = paymentAmounts(
-      normalizedInput.totalPrice,
-      normalizedInput.paymentMode,
-    );
-
-    fields.fldcsD7TEjjYB6kz3 = normalizedInput.totalPrice;
-    fields.fldPN0eZPJuSJSh8o = normalizedInput.paymentMode;
-    fields.fldoBnRqI3ZTZXorO = calculatedPayment.advancePaymentAmount;
-    fields.fldOAbx5iIaFAihvt = calculatedPayment.remainingPaymentAmount;
-  }
-
-  if (normalizedInput.orderType === "ייצור אישי") {
-    if (normalizedInput.productDescription) {
-      fields.fldvuJBwo3Qb4ub7p = normalizedInput.productDescription;
-    }
-
-    if (typeof normalizedInput.quantity === "number") {
-      fields.flddmlzT9ZHk5spa1 = normalizedInput.quantity;
-    }
-
-    if (typeof normalizedInput.width === "number") {
-      fields.fldgdC7Zv9XWkaxqi = normalizedInput.width;
-    }
-
-    if (typeof normalizedInput.depth === "number") {
-      fields.fldLJITSyspOnKcZF = normalizedInput.depth;
-    }
-
-    if (typeof normalizedInput.height === "number") {
-      fields.fldAFUIPpQVOPcfNm = normalizedInput.height;
-    }
-
-    if (normalizedInput.measurementRequired) {
-      fields.fldcx7cPuZH57bMg1 = normalizedInput.measurementRequired;
-    }
-
-    if (normalizedInput.dismantlingOption) {
-      fields.fldGNc09zWTOcLc6s = normalizedInput.dismantlingOption;
-    }
-
-    if (normalizedInput.glassType) {
-      fields.fld5Wn57UvhksY0Ax = normalizedInput.glassType;
-    }
-
-    if (normalizedInput.hardwareColor) {
-      fields.fldPBnhKedXDftVBJ = normalizedInput.hardwareColor;
-    }
-  }
+  let orderId: string | null = null;
+  const createdDocumentLineIds: string[] = [];
 
   try {
     const createdOrder = await createRecord<CreatedOrderFields>(
-      airtableTables.orders,
+      airtableSchema.tables.orders,
       fields,
     );
+    orderId = createdOrder.id;
+
+    for (const line of normalizedInput.lines) {
+      const documentLine = await createRecord<CreatedDocumentLineFields>(
+        airtableSchema.tables.documentLines,
+        documentLineFields(createdOrder.id, line),
+      );
+      createdDocumentLineIds.push(documentLine.id);
+    }
 
     return {
       ok: true as const,
-      message: "ההזמנה נוצרה בהצלחה. ניתן להוסיף שורות הזמנה בנפרד.",
+      message: "ההזמנה ושורות המסמך נוצרו בהצלחה.",
       orderId: createdOrder.id,
+      documentLineCount: createdDocumentLineIds.length,
     };
   } catch (error) {
+    if (orderId) {
+      const deletedDocumentLineIds: string[] = [];
+      const rollbackErrors: string[] = [];
+
+      for (const documentLineId of [...createdDocumentLineIds].reverse()) {
+        try {
+          await deleteRecord(airtableSchema.tables.documentLines, documentLineId);
+          deletedDocumentLineIds.push(documentLineId);
+        } catch (rollbackError) {
+          rollbackErrors.push(
+            `מחיקת שורת מסמך ${documentLineId} נכשלה: ${
+              rollbackError instanceof Error
+                ? rollbackError.message
+                : "שגיאה לא ידועה."
+            }`,
+          );
+        }
+      }
+
+      let deletedOrderId: string | null = null;
+      try {
+        await deleteRecord(airtableSchema.tables.orders, orderId);
+        deletedOrderId = orderId;
+      } catch (rollbackError) {
+        rollbackErrors.push(
+          `מחיקת הזמנה ${orderId} נכשלה: ${
+            rollbackError instanceof Error
+              ? rollbackError.message
+              : "שגיאה לא ידועה."
+          }`,
+        );
+      }
+
+      if (rollbackErrors.length > 0) {
+        return {
+          ok: false as const,
+          message:
+            "יצירת שורות המסמך נכשלה, וגם ה-rollback לא הושלם במלואו.",
+          errors: [
+            error instanceof Error ? error.message : "שגיאה לא ידועה.",
+            `Order record id: ${orderId}`,
+            `Document line record ids שנוצרו: ${
+              createdDocumentLineIds.length > 0
+                ? createdDocumentLineIds.join(", ")
+                : "אין"
+            }`,
+            `Document line record ids שנמחקו: ${
+              deletedDocumentLineIds.length > 0
+                ? deletedDocumentLineIds.join(", ")
+                : "אין"
+            }`,
+            `Order נמחק: ${deletedOrderId ?? "לא"}`,
+            ...rollbackErrors,
+          ],
+          orderId,
+          documentLineIds: createdDocumentLineIds,
+          deletedDocumentLineIds,
+          deletedOrderId,
+        };
+      }
+
+      return {
+        ok: false as const,
+        message:
+          "יצירת שורות המסמך נכשלה. ההזמנה ושורות המסמך שנוצרו נמחקו.",
+        errors: [
+          error instanceof Error ? error.message : "שגיאה לא ידועה.",
+          `Order record id שנמחק: ${orderId}`,
+          `Document line record ids שנמחקו: ${
+            deletedDocumentLineIds.length > 0
+              ? deletedDocumentLineIds.join(", ")
+              : "אין"
+          }`,
+        ],
+        orderId,
+        documentLineIds: createdDocumentLineIds,
+        deletedDocumentLineIds,
+        deletedOrderId,
+      };
+    }
+
     return {
       ok: false as const,
       message: "יצירת ההזמנה נכשלה.",

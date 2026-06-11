@@ -2,8 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { OrderStatus, OrderType } from "@/lib/types";
-import { DOCUMENT_LINES_WRITE_GUARD_MESSAGE } from "@/lib/safety-guard";
+import type { Product } from "@/lib/types";
+import type {
+  CreateStandaloneOrderLineInput,
+  StandaloneOrderLineType,
+} from "@/lib/airtable/services/orders";
 import { createStandaloneOrderAction } from "./actions";
 
 type CreateOrderState = {
@@ -12,63 +15,105 @@ type CreateOrderState = {
   errors?: string[];
 } | null;
 
-const orderTypes: OrderType[] = ["סטנדרטי", "ייצור אישי"];
-const orderStatuses: OrderStatus[] = [
-  "חדשה",
-  "בהכנה",
-  "ממתינה לתשלום",
-  "מוכנה להתקנה",
+type LineDraft = {
+  id: string;
+  lineType: StandaloneOrderLineType;
+  productId: string;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  exitLocation: string;
+};
+
+type CreateStandaloneOrderFormClientProps = {
+  products: Product[];
+};
+
+const orderStatuses = [
+  "חדש",
+  "ממתין למדידה",
+  "אחרי מדידה",
+  "ממתין לאישור",
+  "ממתין לתשלום",
+  "הוזמן מהמפעל-ביצור",
+  "מוכן להתקנה",
+  "הותקן",
+  "סגור",
+  "לתיאום התקנה",
+  "הומרה להזמנה",
+  "בוטל",
+  "ממתין לשרטוטים",
+  "שרטוטים מוכנים",
 ];
-const glassTypes = [
-  "גרניט",
-  "זכוכית שקופה",
-  "פסים",
-  "שקופה",
-  "ברונזה",
-  "מושחר",
-  "גלינה",
-];
-const hardwareColors = ["גרפיט", "לבן", "ניקל", "שחור", "זהב"];
 const paymentMethods = ["העברה בנקאית", "אשראי", "מזומן", "ביט", "פייבוקס"];
 const paymentModes = ["מקדמה 60%", "תשלום מלא"];
+const lineTypes: StandaloneOrderLineType[] = [
+  "סטנדרטי",
+  "ייצור אישי",
+  "מדידה",
+  "עבודה / התקנה",
+  "פירוק",
+  "תוספת",
+];
 
-function numericInputValue(value: string) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function calculatedPayment(totalPrice: string, paymentMode: string) {
-  const price = numericInputValue(totalPrice);
-
-  if (paymentMode === "תשלום מלא") {
-    return {
-      paymentAmount: price,
-      remainingAmount: 0,
-    };
-  }
-
+function newLineDraft(lineType: StandaloneOrderLineType = "סטנדרטי"): LineDraft {
   return {
-    paymentAmount: price * 0.6,
-    remainingAmount: price * 0.4,
+    id: crypto.randomUUID(),
+    lineType,
+    productId: "",
+    description: "",
+    quantity: "1",
+    unitPrice: "0",
+    exitLocation: "",
   };
 }
 
-function formatCalculatedAmount(amount: number) {
-  return amount.toLocaleString("he-IL", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0,
-  });
+function numericFormValue(value: string) {
+  const normalized = value.trim();
+  return normalized ? Number(normalized) : 0;
 }
 
-export function CreateStandaloneOrderFormClient() {
+export function CreateStandaloneOrderFormClient({
+  products,
+}: CreateStandaloneOrderFormClientProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [orderType, setOrderType] = useState<OrderType>("סטנדרטי");
-  const [totalPrice, setTotalPrice] = useState("");
-  const [paymentMode, setPaymentMode] = useState("מקדמה 60%");
   const [result, setResult] = useState<CreateOrderState>(null);
   const [isPending, startTransition] = useTransition();
-  const paymentCalculation = calculatedPayment(totalPrice, paymentMode);
+  const [lineDrafts, setLineDrafts] = useState<LineDraft[]>([newLineDraft()]);
+
+  function updateLineDraft(id: string, patch: Partial<LineDraft>) {
+    setLineDrafts((currentLines) =>
+      currentLines.map((line) =>
+        line.id === id
+          ? {
+              ...line,
+              ...patch,
+              productId:
+                patch.lineType && patch.lineType !== "סטנדרטי"
+                  ? ""
+                  : patch.productId ?? line.productId,
+              description:
+                patch.lineType === "סטנדרטי"
+                  ? ""
+                  : patch.description ?? line.description,
+              exitLocation:
+                patch.lineType && patch.lineType !== "סטנדרטי"
+                  ? ""
+                  : patch.exitLocation ?? line.exitLocation,
+            }
+          : line,
+      ),
+    );
+  }
+
+  function removeLineDraft(id: string) {
+    setLineDrafts((currentLines) =>
+      currentLines.length === 1
+        ? currentLines
+        : currentLines.filter((line) => line.id !== id),
+    );
+  }
 
   function closeForm() {
     if (isPending) {
@@ -77,6 +122,20 @@ export function CreateStandaloneOrderFormClient() {
 
     setIsOpen(false);
     setResult(null);
+  }
+
+  function linePayload(line: LineDraft): CreateStandaloneOrderLineInput {
+    return {
+      lineType: line.lineType,
+      productId: line.lineType === "סטנדרטי" ? line.productId : null,
+      description: line.lineType === "סטנדרטי" ? null : line.description || null,
+      quantity: numericFormValue(line.quantity),
+      unitPrice: numericFormValue(line.unitPrice),
+      exitLocation:
+        line.lineType === "סטנדרטי"
+          ? (line.exitLocation as "חנות" | "מחסן")
+          : null,
+    };
   }
 
   function handleSubmit(formData: FormData, form: HTMLFormElement) {
@@ -90,30 +149,16 @@ export function CreateStandaloneOrderFormClient() {
         customerName: String(formData.get("customerName") ?? ""),
         phone: String(formData.get("phone") ?? ""),
         address: String(formData.get("address") ?? ""),
-        orderType: String(formData.get("orderType") ?? "סטנדרטי") as OrderType,
-        orderStatus: String(formData.get("orderStatus") ?? "חדשה") as OrderStatus,
-        productDescription: String(formData.get("productDescription") ?? "") || null,
-        quantity: String(formData.get("quantity") ?? "") || null,
-        width: String(formData.get("width") ?? "") || null,
-        depth: String(formData.get("depth") ?? "") || null,
-        height: String(formData.get("height") ?? "") || null,
-        totalPrice: String(formData.get("totalPrice") ?? "") || null,
-        paymentMode: String(formData.get("paymentMode") ?? "") || null,
-        measurementRequired:
-          String(formData.get("measurementRequired") ?? "") || null,
-        dismantlingOption: String(formData.get("dismantlingOption") ?? "") || null,
-        glassType: String(formData.get("glassType") ?? "") || null,
-        hardwareColor: String(formData.get("hardwareColor") ?? "") || null,
-        paymentMethod: String(formData.get("paymentMethod") ?? "") || null,
-        paymentApproved: formData.get("paymentApproved") === "on",
+        orderStatus: String(formData.get("orderStatus") ?? "חדש"),
+        paymentMode: String(formData.get("paymentMode") ?? ""),
+        paymentMethod: String(formData.get("paymentMethod") ?? ""),
         notes: String(formData.get("notes") ?? "") || null,
+        lines: lineDrafts.map(linePayload),
       });
 
       if (response.ok) {
         form.reset();
-        setOrderType("סטנדרטי");
-        setTotalPrice("");
-        setPaymentMode("מקדמה 60%");
+        setLineDrafts([newLineDraft()]);
         setIsOpen(false);
         setResult({ kind: "success", message: response.message });
         router.refresh();
@@ -129,31 +174,34 @@ export function CreateStandaloneOrderFormClient() {
   }
 
   return (
-    <section className="standalone-task-creator" aria-label="יצירת הזמנה">
+    <section className="standalone-task-creator" aria-label="יצירת הזמנה ללא הצעה">
       <div className="standalone-task-creator__header">
         <div>
-          <h2>הזמנות</h2>
-          <p>יצירת הזמנה חדשה ללא הצעת מחיר וללא שורות הזמנה בשלב הזה.</p>
+          <h2>הזמנה ללא הצעה</h2>
+          <p>יצירת הזמנה חדשה עם שורות מסמך, ללא הצעת מחיר.</p>
         </div>
-        <div className="page-actions">
-          <button
-            className="primary-action"
-            type="button"
-            onClick={() => undefined}
-            disabled
-          >
-            צור הזמנה חדשה
-          </button>
-        </div>
-      </div>
-      <div className="task-update-error" role="status">
-        {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
+        <button
+          className="primary-action"
+          type="button"
+          onClick={() => {
+            setResult(null);
+            setIsOpen((current) => !current);
+          }}
+          disabled={isPending}
+        >
+          + הזמנה ללא הצעה
+        </button>
       </div>
 
       {result ? (
         <div
-          className={`result-panel result-panel--${result.kind === "success" ? "success" : "error"}`}
+          className={
+            result.kind === "success"
+              ? "task-update-success"
+              : "task-update-error"
+          }
           role={result.kind === "success" ? "status" : "alert"}
+          aria-live="polite"
         >
           <p>{result.message}</p>
           {result.errors && result.errors.length > 0 ? (
@@ -207,194 +255,28 @@ export function CreateStandaloneOrderFormClient() {
             </label>
 
             <label className="filter-field">
-              <span className="filter-label">סוג הזמנה</span>
-              <select
-                className="filter-select"
-                name="orderType"
-                value={orderType}
-                onChange={(event) => setOrderType(event.target.value as OrderType)}
-                disabled={isPending}
-              >
-                {orderTypes.map((orderType) => (
-                  <option value={orderType} key={orderType}>
-                    {orderType}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="filter-field">
-              <span className="filter-label">סטטוס התחלתי</span>
+              <span className="filter-label">סטטוס</span>
               <select
                 className="filter-select"
                 name="orderStatus"
-                defaultValue="חדשה"
+                defaultValue="חדש"
                 disabled={isPending}
               >
-                {orderStatuses.map((orderStatus) => (
-                  <option value={orderStatus} key={orderStatus}>
-                    {orderStatus}
+                {orderStatuses.map((status) => (
+                  <option value={status} key={status}>
+                    {status}
                   </option>
                 ))}
               </select>
             </label>
 
-            {orderType === "ייצור אישי" ? (
-              <>
-                <label className="filter-field standalone-task-creator__notes">
-                  <span className="filter-label">תיאור מוצר</span>
-                  <textarea
-                    className="filter-input"
-                    name="productDescription"
-                    rows={3}
-                    required
-                    disabled={isPending}
-                  />
-                </label>
-
-                <label className="filter-field">
-                  <span className="filter-label">כמות</span>
-                  <input
-                    className="filter-input"
-                    name="quantity"
-                    type="number"
-                    min="1"
-                    step="1"
-                    defaultValue="1"
-                    required
-                    disabled={isPending}
-                  />
-                </label>
-
-                <label className="filter-field">
-                  <span className="filter-label">מידות לקוח רוחב</span>
-                  <input
-                    className="filter-input"
-                    name="width"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    required
-                    disabled={isPending}
-                  />
-                </label>
-
-                <label className="filter-field">
-                  <span className="filter-label">מידות לקוח עומק</span>
-                  <input
-                    className="filter-input"
-                    name="depth"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    required
-                    disabled={isPending}
-                  />
-                </label>
-
-                <label className="filter-field">
-                  <span className="filter-label">גובה מקלחון</span>
-                  <input
-                    className="filter-input"
-                    name="height"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    required
-                    disabled={isPending}
-                  />
-                </label>
-
-                <label className="filter-field">
-                  <span className="filter-label">נדרשת מדידה?</span>
-                  <select
-                    className="filter-select"
-                    name="measurementRequired"
-                    defaultValue=""
-                    required
-                    disabled={isPending}
-                  >
-                    <option value="">בחר</option>
-                    <option value="כן">כן</option>
-                    <option value="לא">לא</option>
-                  </select>
-                </label>
-
-                <label className="filter-field">
-                  <span className="filter-label">אפשרות פירוק</span>
-                  <select
-                    className="filter-select"
-                    name="dismantlingOption"
-                    defaultValue=""
-                    required
-                    disabled={isPending}
-                  >
-                    <option value="">בחר</option>
-                    <option value="נדרש פירוק">כן</option>
-                    <option value="לא נדרש פירוק">לא</option>
-                  </select>
-                </label>
-
-                <label className="filter-field">
-                  <span className="filter-label">סוג זכוכית</span>
-                  <select
-                    className="filter-select"
-                    name="glassType"
-                    defaultValue=""
-                    required
-                    disabled={isPending}
-                  >
-                    <option value="">בחר זכוכית</option>
-                    {glassTypes.map((glassType) => (
-                      <option value={glassType} key={glassType}>
-                        {glassType}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="filter-field">
-                  <span className="filter-label">צבע פרזול</span>
-                  <select
-                    className="filter-select"
-                    name="hardwareColor"
-                    defaultValue=""
-                    required
-                    disabled={isPending}
-                  >
-                    <option value="">בחר צבע</option>
-                    {hardwareColors.map((hardwareColor) => (
-                      <option value={hardwareColor} key={hardwareColor}>
-                        {hardwareColor}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </>
-            ) : null}
-
             <label className="filter-field">
-              <span className="filter-label">מחיר בשקלים</span>
-              <input
-                className="filter-input"
-                name="totalPrice"
-                type="number"
-                min="0"
-                step="0.01"
-                value={totalPrice}
-                onChange={(event) => setTotalPrice(event.target.value)}
-                required={orderType === "ייצור אישי"}
-                disabled={isPending}
-              />
-            </label>
-
-            <label className="filter-field">
-              <span className="filter-label">תשלום מלא / מקדמה 60%</span>
+              <span className="filter-label">תשלום מלא/מקדמה</span>
               <select
                 className="filter-select"
                 name="paymentMode"
-                value={paymentMode}
-                onChange={(event) => setPaymentMode(event.target.value)}
+                defaultValue="מקדמה 60%"
+                required
                 disabled={isPending}
               >
                 {paymentModes.map((mode) => (
@@ -405,33 +287,16 @@ export function CreateStandaloneOrderFormClient() {
               </select>
             </label>
 
-            <div className="filter-field" aria-live="polite">
-              <span className="filter-label">
-                {paymentMode === "תשלום מלא"
-                  ? "סכום לתשלום"
-                  : "סכום מקדמה 60%"}
-              </span>
-              <div className="filter-input filter-input--readonly">
-                ₪{formatCalculatedAmount(paymentCalculation.paymentAmount)}
-              </div>
-            </div>
-
-            <div className="filter-field" aria-live="polite">
-              <span className="filter-label">יתרת תשלום</span>
-              <div className="filter-input filter-input--readonly">
-                ₪{formatCalculatedAmount(paymentCalculation.remainingAmount)}
-              </div>
-            </div>
-
             <label className="filter-field">
               <span className="filter-label">אמצעי תשלום</span>
               <select
                 className="filter-select"
                 name="paymentMethod"
                 defaultValue=""
+                required
                 disabled={isPending}
               >
-                <option value="">ללא אמצעי תשלום</option>
+                <option value="">בחר אמצעי תשלום</option>
                 {paymentMethods.map((paymentMethod) => (
                   <option value={paymentMethod} key={paymentMethod}>
                     {paymentMethod}
@@ -439,26 +304,180 @@ export function CreateStandaloneOrderFormClient() {
                 ))}
               </select>
             </label>
-
-            <label className="checkbox-field">
-              <input
-                name="paymentApproved"
-                type="checkbox"
-                disabled={isPending}
-              />
-              <span>אישור תשלום התקבל</span>
-            </label>
-
-            <label className="filter-field standalone-task-creator__notes">
-              <span className="filter-label">הערות</span>
-              <textarea
-                className="filter-input"
-                name="notes"
-                rows={3}
-                disabled={isPending}
-              />
-            </label>
           </div>
+
+          <div className="task-assignment-editor">
+            <div className="task-assignment-editor__heading">
+              <div>
+                <strong>שורות מסמך</strong>
+                <span>השורות ייקשרו להזמנה ויפעילו את תהליך המלאי לפי הצורך.</span>
+              </div>
+            </div>
+
+            <div className="quote-lines-list">
+              {lineDrafts.map((line, index) => (
+                <div className="quote-line-card" key={line.id}>
+                  <div className="quote-line-card__fields">
+                    <label className="filter-field">
+                      <span className="filter-label">סוג שורה</span>
+                      <select
+                        className="filter-select"
+                        value={line.lineType}
+                        disabled={isPending}
+                        onChange={(event) =>
+                          updateLineDraft(line.id, {
+                            lineType: event.target
+                              .value as StandaloneOrderLineType,
+                          })
+                        }
+                      >
+                        {lineTypes.map((lineType) => (
+                          <option value={lineType} key={lineType}>
+                            {lineType === "עבודה / התקנה" ? "שירות" : lineType}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    {line.lineType === "סטנדרטי" ? (
+                      <label className="filter-field quote-line-card__main-field">
+                        <span className="filter-label">מוצר</span>
+                        <select
+                          className="filter-select"
+                          value={line.productId}
+                          required
+                          disabled={isPending}
+                          onChange={(event) =>
+                            updateLineDraft(line.id, {
+                              productId: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="">בחר מוצר</option>
+                          {products.map((product) => (
+                            <option value={product.id} key={product.id}>
+                              {product.selectLabel}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : (
+                      <label className="filter-field quote-line-card__main-field">
+                        <span className="filter-label">תיאור שורה</span>
+                        <textarea
+                          className="filter-input"
+                          rows={2}
+                          value={line.description}
+                          required
+                          disabled={isPending}
+                          onChange={(event) =>
+                            updateLineDraft(line.id, {
+                              description: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    )}
+
+                    <label className="filter-field">
+                      <span className="filter-label">כמות</span>
+                      <input
+                        className="filter-input"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={line.quantity}
+                        required
+                        disabled={isPending}
+                        onChange={(event) =>
+                          updateLineDraft(line.id, {
+                            quantity: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label className="filter-field">
+                      <span className="filter-label">מחיר יחידה</span>
+                      <input
+                        className="filter-input"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={line.unitPrice}
+                        required
+                        disabled={isPending}
+                        onChange={(event) =>
+                          updateLineDraft(line.id, {
+                            unitPrice: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+
+                    {line.lineType === "סטנדרטי" ? (
+                      <label className="filter-field">
+                        <span className="filter-label">מיקום יציאה</span>
+                        <select
+                          className="filter-select"
+                          value={line.exitLocation}
+                          required
+                          disabled={isPending}
+                          onChange={(event) =>
+                            updateLineDraft(line.id, {
+                              exitLocation: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="">בחר</option>
+                          <option value="חנות">חנות</option>
+                          <option value="מחסן">מחסן</option>
+                        </select>
+                      </label>
+                    ) : null}
+                  </div>
+
+                  <div className="quote-line-card__actions">
+                    <span className="muted-text">שורה {index + 1}</span>
+                    <button
+                      className="task-row-actions__secondary"
+                      type="button"
+                      disabled={isPending || lineDrafts.length === 1}
+                      onClick={() => removeLineDraft(line.id)}
+                    >
+                      הסר שורה
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="task-assignment-editor__actions">
+              <button
+                className="task-row-actions__secondary"
+                type="button"
+                disabled={isPending}
+                onClick={() =>
+                  setLineDrafts((currentLines) => [
+                    ...currentLines,
+                    newLineDraft(),
+                  ])
+                }
+              >
+                הוסף שורה
+              </button>
+            </div>
+          </div>
+
+          <label className="filter-field standalone-task-creator__notes">
+            <span className="filter-label">הערות</span>
+            <textarea
+              className="filter-input"
+              name="notes"
+              rows={3}
+              disabled={isPending}
+            />
+          </label>
 
           <div className="task-assignment-editor__actions">
             <button className="primary-action" type="submit" disabled={isPending}>
