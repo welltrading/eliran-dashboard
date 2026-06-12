@@ -10,8 +10,21 @@ import {
   createOrderTask,
   type CreateOrderTaskInput,
 } from "@/lib/airtable/services/tasks";
+import {
+  DOCUMENT_LINES_WRITE_GUARD_ERROR,
+  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+  isDocumentLinesWriteGuardEnabled,
+} from "@/lib/safety-guard";
 
 export async function createStandaloneOrderAction(input: CreateStandaloneOrderInput) {
+  if (isDocumentLinesWriteGuardEnabled()) {
+    return {
+      ok: false as const,
+      message: DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
+      errors: [DOCUMENT_LINES_WRITE_GUARD_ERROR],
+    };
+  }
+
   return createStandaloneOrder(input);
 }
 
