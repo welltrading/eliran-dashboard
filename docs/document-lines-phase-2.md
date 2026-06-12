@@ -37,6 +37,30 @@ Automation: `שורות מסמך — יצירת תנועת מלאי סטנדרט
 - `מוצר` = `Trigger record -> מוצר -> ID`
 - `מיקום` = `Trigger record -> מיקום יציאה -> Name/value`
 
+## Core Smoke Test
+
+- Quote: `96`
+- Quote record: `recIVK94vRIH2gonG`
+- Order: `214`
+- Order record: `reckXZ6uq4ASxGqT2`
+- Quote document lines: `2`
+- Order document lines: `2`
+- Inventory movements: `1`
+- Movement: `recWHJriudjByLpKM`
+- Movement number: `429`
+- Product on movement: `receK8lvK87AbmiQP`
+- Product on standard order line: `receK8lvK87AbmiQP`
+- Movement location: `מחסן`
+- Order line exit location: `מחסן`
+- Hard key: `receK8lvK87AbmiQP|מחסן`
+- No legacy order lines.
+- Movement was created only for the standard line, not for the measurement/service line.
+- Result: passed.
+
+This smoke test covers only the core document-lines flow:
+`quote -> order -> document lines -> inventory movement`.
+It does not cover EasyCount, tasks, approvals, installer payments, or production deploy.
+
 ## Rules To Preserve
 
 - Do not return to legacy `שורות הזמנה`.
