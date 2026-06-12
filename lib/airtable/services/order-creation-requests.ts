@@ -5,7 +5,11 @@ import { mapOrderCreationRequest } from "../mappers/order-creation-requests";
 import type { RawOrderCreationRequestFields } from "../raw-types";
 import { airtableSchema } from "../schema";
 import { createRecord } from "../write-client";
-import { getDocumentLinesByQuoteId } from "./document-lines";
+import {
+  getDocumentLinesByQuoteId,
+  updateDocumentLineExitLocationsForQuote,
+  type DocumentLineExitLocation,
+} from "./document-lines";
 import { getQuoteById } from "./quotes";
 
 export type CreateOrderCreationRequestInput = {
@@ -14,6 +18,7 @@ export type CreateOrderCreationRequestInput = {
   paymentMethod: "העברה בנקאית" | "אשראי" | "מזומן" | "ביט" | "פייבוקס";
   source: "מדרג" | "מקצוענים" | "גוגל" | "המלצה" | "מהאתר" | "אחר";
   standardExitLocation?: "חנות" | "מחסן" | null;
+  standardLineExitLocations?: Record<string, DocumentLineExitLocation>;
   notes?: string | null;
 };
 
@@ -56,6 +61,17 @@ function normalizedOptionalText(value: string | null | undefined) {
 
 function hasStandardDocumentLine(documentLines: DocumentLine[]) {
   return documentLines.some((line) => line.lineType === "סטנדרטי");
+}
+
+function standardDocumentLines(documentLines: DocumentLine[]) {
+  return documentLines.filter((line) => line.lineType === "סטנדרטי");
+}
+
+function fallbackStandardExitLocation(
+  updates: Array<{ exitLocation: DocumentLineExitLocation }>,
+) {
+  const uniqueLocations = new Set(updates.map((update) => update.exitLocation));
+  return uniqueLocations.size === 1 ? updates[0]?.exitLocation ?? null : null;
 }
 
 function requestIsOpen(request: OrderCreationRequest) {
@@ -147,6 +163,7 @@ export async function createOrderCreationRequestFromQuote(
   const paymentMethod = normalizedText(input.paymentMethod);
   const source = normalizedText(input.source);
   const standardExitLocation = normalizedOptionalText(input.standardExitLocation);
+  const standardLineExitLocations = input.standardLineExitLocations ?? {};
   const notes = normalizedOptionalText(input.notes);
   const errors: string[] = [];
 
@@ -200,6 +217,8 @@ export async function createOrderCreationRequestFromQuote(
   }
 
   const documentLines = await getDocumentLinesByQuoteId(quoteId);
+  const standardLines = standardDocumentLines(documentLines);
+  const standardLineIds = new Set(standardLines.map((line) => line.id));
 
   if (documentLines.length === 0) {
     return {
@@ -209,11 +228,33 @@ export async function createOrderCreationRequestFromQuote(
     };
   }
 
-  if (hasStandardDocumentLine(documentLines) && !standardExitLocation) {
+  const invalidLineExitLocationIds = Object.keys(standardLineExitLocations).filter(
+    (documentLineId) => !standardLineIds.has(documentLineId),
+  );
+
+  if (invalidLineExitLocationIds.length > 0) {
     return {
       ok: false,
       message: "לא ניתן ליצור בקשת הזמנה.",
-      errors: ["יש לבחור מיקום יציאה לפריטים סטנדרטיים."],
+      errors: ["מיקום יציאה מותר רק לשורות סטנדרטיות של הצעת המחיר."],
+    };
+  }
+
+  const lineExitLocationUpdates = standardLines.map((line) => ({
+    documentLineId: line.id,
+    exitLocation: standardLineExitLocations[line.id],
+  }));
+  const missingExitLocation = lineExitLocationUpdates.some(
+    (update) => !standardExitLocations.includes(update.exitLocation),
+  );
+
+  if (hasStandardDocumentLine(documentLines) && missingExitLocation) {
+    return {
+      ok: false,
+      message: "לא ניתן ליצור בקשת הזמנה.",
+      errors: [
+        "יש לבחור מיקום יציאה לכל מוצר סטנדרטי לפני יצירת הזמנה",
+      ],
     };
   }
 
@@ -228,6 +269,24 @@ export async function createOrderCreationRequestFromQuote(
     };
   }
 
+  const exitLocationUpdates = lineExitLocationUpdates.map((update) => ({
+    documentLineId: update.documentLineId,
+    exitLocation: update.exitLocation as DocumentLineExitLocation,
+  }));
+  const exitLocationUpdateResult =
+    await updateDocumentLineExitLocationsForQuote({
+      quoteId,
+      updates: exitLocationUpdates,
+    });
+
+  if (!exitLocationUpdateResult.ok) {
+    return {
+      ok: false,
+      message: exitLocationUpdateResult.message,
+      errors: exitLocationUpdateResult.errors,
+    };
+  }
+
   try {
     const request = await createRecord<CreatedOrderCreationRequestFields>(
       airtableSchema.tables.orderCreationRequests,
@@ -239,7 +298,7 @@ export async function createOrderCreationRequestFromQuote(
           paymentMethod as CreateOrderCreationRequestInput["paymentMethod"],
         source: source as CreateOrderCreationRequestInput["source"],
         standardExitLocation:
-          standardExitLocation as CreateOrderCreationRequestInput["standardExitLocation"],
+          fallbackStandardExitLocation(exitLocationUpdates) as CreateOrderCreationRequestInput["standardExitLocation"],
         notes,
       }),
     );

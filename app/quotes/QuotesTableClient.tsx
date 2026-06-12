@@ -27,7 +27,7 @@ type OrderCreationRequestDraft = {
   paymentType: "תשלום מלא" | "מקדמה 60%";
   paymentMethod: string;
   source: string;
-  standardExitLocation: string;
+  standardLineExitLocations: Record<string, string>;
   notes: string;
 };
 
@@ -77,12 +77,31 @@ function documentLineLabel(quote: Quote) {
   return `${quote.documentLines.length} פריטים`;
 }
 
-function documentLineText(line: Quote["documentLines"][number]) {
-  return line.displayDescription || line.description || "פריט ללא תיאור";
+function documentLineText(
+  line: Quote["documentLines"][number],
+  productsById?: Map<string, Product>,
+) {
+  const productNames = line.productIds
+    .map((productId) => {
+      const product = productsById?.get(productId);
+      return product?.fullName || product?.baseName || null;
+    })
+    .filter(Boolean);
+
+  return (
+    productNames.join(", ") ||
+    line.displayDescription ||
+    line.description ||
+    line.lineType ||
+    "פריט ללא תיאור"
+  );
 }
 
-function documentLinePreview(line: Quote["documentLines"][number]) {
-  return `${documentLineText(line)} · ${line.quantity} × ${formatCurrency(line.unitPrice)}`;
+function documentLinePreview(
+  line: Quote["documentLines"][number],
+  productsById?: Map<string, Product>,
+) {
+  return `${documentLineText(line, productsById)} · ${line.quantity} × ${formatCurrency(line.unitPrice)}`;
 }
 
 function matchesStatus(status: string, filter: StatusFilter) {
@@ -123,6 +142,23 @@ function hasStandardDocumentLine(quote: Quote) {
   return quote.documentLines.some((line) => line.lineType === "סטנדרטי");
 }
 
+function standardDocumentLines(quote: Quote) {
+  return quote.documentLines.filter((line) => line.lineType === "סטנדרטי");
+}
+
+function validExitLocation(value: string | null | undefined) {
+  return value === "חנות" || value === "מחסן";
+}
+
+function initialStandardLineExitLocations(quote: Quote) {
+  return Object.fromEntries(
+    standardDocumentLines(quote).map((line) => [
+      line.id,
+      validExitLocation(line.exitLocation) ? line.exitLocation : "",
+    ]),
+  );
+}
+
 function hasActiveOrderCreationRequestError(quote: Quote) {
   return Boolean(quote.orderCreationRequestError);
 }
@@ -141,7 +177,7 @@ function newOrderCreationRequestDraft(quote: Quote): OrderCreationRequestDraft {
     paymentType: "תשלום מלא",
     paymentMethod: "",
     source: quote.leadSource ?? "",
-    standardExitLocation: "",
+    standardLineExitLocations: initialStandardLineExitLocations(quote),
     notes: "",
   };
 }
@@ -213,6 +249,11 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
   const [expandedQuoteLineIds, setExpandedQuoteLineIds] = useState<
     Record<string, boolean>
   >({});
+
+  const productsById = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
 
   const filteredQuotes = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -291,12 +332,41 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
           paymentType: "תשלום מלא",
           paymentMethod: "",
           source: "",
-          standardExitLocation: "",
+          standardLineExitLocations: {},
           notes: "",
         }),
+        standardLineExitLocations:
+          currentDrafts[quoteId]?.standardLineExitLocations ?? {},
         ...patch,
       },
     }));
+  }
+
+  function updateStandardLineExitLocation(
+    quoteId: string,
+    documentLineId: string,
+    exitLocation: string,
+  ) {
+    setRequestDrafts((currentDrafts) => {
+      const currentDraft = currentDrafts[quoteId] ?? {
+        paymentType: "תשלום מלא" as const,
+        paymentMethod: "",
+        source: "",
+        standardLineExitLocations: {},
+        notes: "",
+      };
+
+      return {
+        ...currentDrafts,
+        [quoteId]: {
+          ...currentDraft,
+          standardLineExitLocations: {
+            ...(currentDraft.standardLineExitLocations ?? {}),
+            [documentLineId]: exitLocation,
+          },
+        },
+      };
+    });
   }
 
   function toggleQuoteLineDetails(quoteId: string) {
@@ -312,6 +382,19 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
     }
 
     const draft = requestDrafts[quote.id] ?? newOrderCreationRequestDraft(quote);
+    const standardLines = standardDocumentLines(quote);
+    const missingStandardExitLocation = standardLines.some(
+      (line) => !validExitLocation(draft.standardLineExitLocations[line.id]),
+    );
+
+    if (missingStandardExitLocation) {
+      setRequestFeedback({
+        kind: "error",
+        message: "יש לבחור מיקום יציאה לכל מוצר סטנדרטי לפני יצירת הזמנה",
+      });
+      return;
+    }
+
     setRequestFeedback(null);
     setSubmittingRequestQuoteId(quote.id);
 
@@ -332,9 +415,12 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
           | "המלצה"
           | "מהאתר"
           | "אחר",
-        standardExitLocation: hasStandardDocumentLine(quote)
-          ? (draft.standardExitLocation as "חנות" | "מחסן")
-          : null,
+        standardLineExitLocations: Object.fromEntries(
+          standardLines.map((line) => [
+            line.id,
+            draft.standardLineExitLocations[line.id] as "חנות" | "מחסן",
+          ]),
+        ),
         notes: draft.notes || null,
       });
 
@@ -800,7 +886,7 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                               >
                                 {quote.documentLines.map((line) => (
                                   <span key={line.id}>
-                                    {documentLinePreview(line)}
+                                    {documentLinePreview(line, productsById)}
                                   </span>
                                 ))}
                               </div>
@@ -877,6 +963,113 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                               </span>
                             </div>
                           </div>
+
+                          <div className="quote-lines-list">
+                            {quote.documentLines.map((line) => {
+                              const isStandardLine = line.lineType === "סטנדרטי";
+                              const lineExitLocation =
+                                requestDrafts[quote.id]?.standardLineExitLocations?.[
+                                  line.id
+                                ] ??
+                                (validExitLocation(line.exitLocation)
+                                  ? line.exitLocation
+                                  : "");
+
+                              return (
+                                <div className="quote-line-card" key={line.id}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "4px",
+                                      marginBottom: "12px",
+                                    }}
+                                  >
+                                    <span className="filter-label">מוצר / שירות</span>
+                                    <strong
+                                      style={{
+                                        color: "var(--text)",
+                                        fontSize: "15px",
+                                        fontWeight: 700,
+                                        lineHeight: 1.4,
+                                      }}
+                                    >
+                                      {documentLineText(line, productsById)}
+                                    </strong>
+                                  </div>
+
+                                  <div
+                                    className="quote-line-card__fields"
+                                    style={{
+                                      alignItems: "end",
+                                      display: "flex",
+                                      flexWrap: "wrap",
+                                      gap: "12px",
+                                    }}
+                                  >
+                                    <div
+                                      className="filter-field"
+                                      style={{ flex: "1 1 150px" }}
+                                    >
+                                      <span className="filter-label">סוג שורה</span>
+                                      <span className="filter-input filter-input--readonly">
+                                        {line.lineType ?? "-"}
+                                      </span>
+                                    </div>
+
+                                    <div
+                                      className="filter-field"
+                                      style={{ flex: "0 0 72px" }}
+                                    >
+                                      <span className="filter-label">כמות</span>
+                                      <span className="filter-input filter-input--readonly">
+                                        {line.quantity}
+                                      </span>
+                                    </div>
+
+                                    <div
+                                      className="filter-field"
+                                      style={{ flex: "0 1 128px" }}
+                                    >
+                                      <span className="filter-label">מחיר יחידה</span>
+                                      <span className="filter-input filter-input--readonly">
+                                        {formatCurrency(line.unitPrice)}
+                                      </span>
+                                    </div>
+
+                                    {isStandardLine ? (
+                                      <label
+                                        className="filter-field"
+                                        style={{ flex: "0 1 180px" }}
+                                      >
+                                        <span className="filter-label">מיקום יציאה</span>
+                                        <select
+                                          className="filter-select"
+                                          value={lineExitLocation ?? ""}
+                                          required
+                                          disabled={
+                                            submittingRequestQuoteId === quote.id
+                                          }
+                                          onChange={(event) =>
+                                            updateStandardLineExitLocation(
+                                              quote.id,
+                                              line.id,
+                                              event.target.value,
+                                            )
+                                          }
+                                        >
+                                          <option value="">בחר</option>
+                                          <option value="חנות">חנות</option>
+                                          <option value="מחסן">מחסן</option>
+                                        </select>
+                                      </label>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
                           <div className="task-assignment-editor__fields">
                             <label className="filter-field">
                               <span className="filter-label">תשלום מלא/מקדמה</span>
@@ -944,32 +1137,6 @@ export function QuotesTableClient({ quotes, products }: QuotesTableClientProps) 
                                 <option value="אחר">אחר</option>
                               </select>
                             </label>
-
-                            {hasStandardDocumentLine(quote) ? (
-                              <label className="filter-field">
-                                <span className="filter-label">
-                                  מיקום יציאה לפריטים סטנדרטיים
-                                </span>
-                                <select
-                                  className="filter-select"
-                                  value={
-                                    requestDrafts[quote.id]
-                                      ?.standardExitLocation ?? ""
-                                  }
-                                  required
-                                  disabled={submittingRequestQuoteId === quote.id}
-                                  onChange={(event) =>
-                                    updateOrderCreationRequestDraft(quote.id, {
-                                      standardExitLocation: event.target.value,
-                                    })
-                                  }
-                                >
-                                  <option value="">בחר</option>
-                                  <option value="חנות">חנות</option>
-                                  <option value="מחסן">מחסן</option>
-                                </select>
-                              </label>
-                            ) : null}
 
                             <label className="filter-field standalone-task-creator__notes">
                               <span className="filter-label">הערות</span>
