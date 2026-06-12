@@ -3,7 +3,3 @@ export const DOCUMENT_LINES_WRITE_GUARD_MESSAGE =
 
 export const DOCUMENT_LINES_WRITE_GUARD_ERROR =
   "Phase 3 safety guard: legacy write flow is blocked until it is rebuilt for document lines.";
-
-export function isDocumentLinesWriteGuardEnabled() {
-  return true;
-}

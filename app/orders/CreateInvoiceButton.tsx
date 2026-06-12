@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import type { OrderType, PaymentStage } from "@/lib/types";
-import {
-  DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
-  isDocumentLinesWriteGuardEnabled,
-} from "@/lib/safety-guard";
+import { DOCUMENT_LINES_WRITE_GUARD_MESSAGE } from "@/lib/safety-guard";
 
 type CreateInvoiceButtonProps = {
   recordId: string;
@@ -16,6 +13,7 @@ type CreateInvoiceButtonProps = {
   createLabel: string;
   loadingLabel: string;
   existingLabel: string;
+  writeGuardEnabled?: boolean;
 };
 
 type RequestState = "idle" | "loading" | "success" | "error";
@@ -29,6 +27,7 @@ export function CreateInvoiceButton({
   createLabel,
   loadingLabel,
   existingLabel,
+  writeGuardEnabled = true,
 }: CreateInvoiceButtonProps) {
   const [state, setState] = useState<RequestState>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -101,7 +100,7 @@ export function CreateInvoiceButton({
     }
   }
 
-  if (isDocumentLinesWriteGuardEnabled()) {
+  if (writeGuardEnabled) {
     return (
       <div className="quote-action">
         <button className="quote-action__button" type="button" disabled>

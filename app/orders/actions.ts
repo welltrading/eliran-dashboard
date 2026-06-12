@@ -14,7 +14,7 @@ import {
   DOCUMENT_LINES_WRITE_GUARD_ERROR,
   DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
   isDocumentLinesWriteGuardEnabled,
-} from "@/lib/safety-guard";
+} from "@/lib/safety-guard.server";
 
 export async function createStandaloneOrderAction(input: CreateStandaloneOrderInput) {
   if (isDocumentLinesWriteGuardEnabled()) {

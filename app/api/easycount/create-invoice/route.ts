@@ -8,7 +8,7 @@ import {
   DOCUMENT_LINES_WRITE_GUARD_ERROR,
   DOCUMENT_LINES_WRITE_GUARD_MESSAGE,
   isDocumentLinesWriteGuardEnabled,
-} from "@/lib/safety-guard";
+} from "@/lib/safety-guard.server";
 
 type CreateInvoiceRequest = {
   record_id?: unknown;
