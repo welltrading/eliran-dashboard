@@ -23,7 +23,7 @@ export default async function ApprovalsPage() {
     <div className="page page--wide">
       <PageHeader
         title="אישורי ביצוע"
-        description="משימות שבוצעו בפועל וממתינות לאישור אלירן לפני כניסה לתשלום."
+        description="משימות בסטטוס בוצע שממתינות לאישור אלירן לפני כניסה לתשלום."
       />
 
       <div className="grid stats-grid approvals-summary">
@@ -31,7 +31,7 @@ export default async function ApprovalsPage() {
           <div className="card__body stat-card">
             <p className="stat-card__label">ממתינות לאישור</p>
             <p className="stat-card__value">{tasks.length}</p>
-            <p className="stat-card__note">בוצעו בפועל ועדיין לא אושרו לתשלום</p>
+            <p className="stat-card__note">סטטוס בוצע ועדיין לא אושרו לתשלום</p>
           </div>
         </Card>
         <Card>

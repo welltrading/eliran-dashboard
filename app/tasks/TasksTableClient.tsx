@@ -566,7 +566,7 @@ export function TasksTableClient({
   const unscheduledTasks = filteredTasks.filter((task) => !task.executionDate);
 
   function handleMarkDone(task: Task) {
-    if (task.actuallyDone || task.status === "בוצע" || isMarkingDone) {
+    if (task.status === "בוצע" || isMarkingDone) {
       return;
     }
 
@@ -694,7 +694,7 @@ export function TasksTableClient({
 
     return (
       <tr className="tasks-table__assignment-row">
-        <td colSpan={14}>
+        <td colSpan={13}>
           <form
             className="task-assignment-editor"
             onSubmit={(event) => {
@@ -788,7 +788,7 @@ export function TasksTableClient({
               <button
                 className="task-row-actions__done"
                 type="button"
-                disabled={task.actuallyDone || task.status === "בוצע" || updatingTaskId === task.id}
+                disabled={task.status === "בוצע" || updatingTaskId === task.id}
                 onClick={() => handleMarkDone(task)}
               >
                 {updatingTaskId === task.id ? "מעדכן..." : "סמן כבוצע"}
@@ -826,7 +826,6 @@ export function TasksTableClient({
           <td>
             <span className={scheduleBadgeClass(task)}>{scheduleLabel(task)}</span>
           </td>
-          <td>{task.actuallyDone ? "כן" : "לא"}</td>
           <td className="task-notes">{task.notes ?? task.scheduleSendError ?? "-"}</td>
         </tr>
         {editingTaskId === task.id ? renderAssignmentEditor(task) : null}
@@ -1353,7 +1352,6 @@ export function TasksTableClient({
                 <th>טלפון</th>
                 <th>כתובת</th>
                 <th>סידור נשלח</th>
-                <th>בוצע בפועל</th>
                 <th>הערות</th>
               </tr>
             </thead>
@@ -1361,7 +1359,7 @@ export function TasksTableClient({
               {renderRows(scheduledTasks)}
               {unscheduledTasks.length > 0 && (
                 <tr className="tasks-table__section-row">
-                  <td colSpan={14}>משימות ללא תאריך ביצוע</td>
+                  <td colSpan={13}>משימות ללא תאריך ביצוע</td>
                 </tr>
               )}
               {renderRows(unscheduledTasks)}

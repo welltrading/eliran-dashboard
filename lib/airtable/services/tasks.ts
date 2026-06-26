@@ -273,7 +273,6 @@ function mapTask(
     scheduledDate: executionDate,
     timeWindow: nullableTextValue(fields.fldGurfCRnIZNu8Dl),
     notes: nullableTextValue(fields.fldIcfmWGysvQYv8c),
-    actuallyDone: booleanValue(fields.fld00gbAzyZVvDWOt),
     scheduleSentToInstaller: booleanValue(fields.fldwCt6kfDJKCwRGl),
     scheduleSentAt: nullableTextValue(fields.fldThdHcsu0pVe6wV),
     scheduleSendStatus: nullableTextValue(fields.flduXVUqqxhKDwV7i),

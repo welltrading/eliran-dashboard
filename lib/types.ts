@@ -430,7 +430,6 @@ export type Task = {
   scheduledDate: string | null;
   timeWindow: string | null;
   notes: string | null;
-  actuallyDone: boolean;
   scheduleSentToInstaller: boolean;
   scheduleSentAt: string | null;
   scheduleSendStatus: string | null;

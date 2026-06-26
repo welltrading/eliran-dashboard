@@ -97,7 +97,7 @@ type MinimalTaskRecord = {
   id: string;
   fields: Pick<
     RawTaskFields,
-    "fldJQBgJQDdtQFvML" | "fldAP5bP6n8okIqec" | "fld00gbAzyZVvDWOt"
+    "fldJQBgJQDdtQFvML" | "fldAP5bP6n8okIqec"
   >;
 };
 
@@ -132,6 +132,7 @@ const standaloneLineTypes: StandaloneOrderLineType[] = [
 const standardExitLocations = ["חנות", "מחסן"];
 const documentLineSourceFromApp = "נוצרה באפליקציה";
 const activeDocumentLineStatus = "פעילה";
+const closedTaskStatuses = new Set(["בוצע", "אושר ביצוע", "בוטל"]);
 const customProductionStatuses: CustomProductionStatus[] = [
   "ממתין למדידה",
   "מדידה תואמה",
@@ -179,10 +180,6 @@ function textValue(value: unknown) {
   return "";
 }
 
-function booleanValue(value: unknown) {
-  return value === true;
-}
-
 function linkedRecordIds(value: unknown) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -190,8 +187,7 @@ function linkedRecordIds(value: unknown) {
 }
 
 function isOpenLinkedTask(task: MinimalTaskRecord) {
-  return textValue(task.fields.fldAP5bP6n8okIqec) !== "בוצע" &&
-    !booleanValue(task.fields.fld00gbAzyZVvDWOt);
+  return !closedTaskStatuses.has(textValue(task.fields.fldAP5bP6n8okIqec));
 }
 
 function buildOpenTaskCountByOrderId(tasks: MinimalTaskRecord[]) {
@@ -486,7 +482,7 @@ export async function getOrders() {
       returnFieldsByFieldId: true,
     }),
     selectRecords<MinimalTaskRecord["fields"]>(airtableTables.tasks, {
-      fields: ["fldJQBgJQDdtQFvML", "fldAP5bP6n8okIqec", "fld00gbAzyZVvDWOt"],
+      fields: ["fldJQBgJQDdtQFvML", "fldAP5bP6n8okIqec"],
       returnFieldsByFieldId: true,
     }),
     getDocumentLines(),

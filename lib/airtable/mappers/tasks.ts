@@ -22,7 +22,6 @@ export function mapTask(record: RawRecord): Task {
       nullableText(record.fields["תאריך מתוכנן"]),
     timeWindow: nullableText(record.fields.fldGurfCRnIZNu8Dl),
     notes: nullableText(record.fields.fldIcfmWGysvQYv8c),
-    actuallyDone: record.fields.fld00gbAzyZVvDWOt === true,
     scheduleSentToInstaller: record.fields.fldwCt6kfDJKCwRGl === true,
     scheduleSentAt: nullableText(record.fields.fldThdHcsu0pVe6wV),
     scheduleSendStatus: nullableText(record.fields.flduXVUqqxhKDwV7i),
