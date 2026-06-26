@@ -210,11 +210,16 @@ export function mapOrder(
     // LEGACY_DISPLAY_FALLBACK_ONLY: retained for temporary display when an order has no document lines yet.
     totalPrice: numberValue(record.fields.flddZQjojnGZeZ5By),
     documentLines,
+    documentLineRecordIds: linkedRecordIds(record.fields.fldv0SOp0ttrLIXG4),
     totalFromDocumentLines: documentLinesTotal,
+    totalByDocumentLinesField: numberValue(record.fields.fldi4BxoqkZkd63hv),
     advance60FromDocumentLines: documentLinesTotal * 0.6,
+    advance60ByDocumentLinesField: numberValue(record.fields.fldHX9EojcSIX63QH),
     balance40FromDocumentLines: documentLinesTotal * 0.4,
+    balance40ByDocumentLinesField: numberValue(record.fields.fldHyYysZmIGoZWOp),
     orderTypeFromDocumentLines: orderTypeFromDocumentLines(documentLines),
     paymentMode: nullableTextValue(record.fields.fldPN0eZPJuSJSh8o),
+    paymentMethod: nullableTextValue(record.fields.fldUealfvxq803w4h),
     // LEGACY_DISPLAY_FALLBACK_ONLY: old payment fields remain display fallback only.
     advancePaymentAmount: numberValue(record.fields.fldoBnRqI3ZTZXorO),
     remainingPaymentAmount: numberValue(record.fields.fldOAbx5iIaFAihvt),
@@ -229,6 +234,7 @@ export function mapOrder(
     easyCountFinalStatus: nullableTextValue(record.fields.fldtE1r6tMMj28HNF),
     easyCountFinalError: nullableTextValue(record.fields.fldT6fSDKdVbhcPmw),
     invoiceReceiptRequested: booleanValue(record.fields.fldUHtJ82z3U2eG6W),
+    finalInvoiceReceiptRequested: booleanValue(record.fields.fld3R8AuoS5NGj8uK),
     shortNotes: nullableTextValue(record.fields.fldFRK1Kz26jE99xR),
     // LEGACY_DISPLAY_FALLBACK_ONLY: old order-line links remain available until write flows are migrated.
     orderLineIds: Array.isArray(record.fields.fldIJzxGrwPaDNACs)

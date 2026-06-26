@@ -13,6 +13,7 @@ import {
   createOrderTaskAction,
   updateCustomProductionAction,
 } from "./actions";
+import { CreateInvoiceButton } from "./CreateInvoiceButton";
 
 type TaskInstallerOption = {
   id: string;
@@ -130,6 +131,22 @@ function displayDocumentLineDescription(order: Order) {
 
 function firstPaymentStage(order: Order): PaymentStage {
   return order.paymentMode?.includes("מלא") ? "full_payment" : "advance_60";
+}
+
+function firstInvoiceAmount(order: Order, paymentStage: PaymentStage) {
+  if (paymentStage === "full_payment") {
+    return order.totalByDocumentLinesField;
+  }
+
+  return order.advance60ByDocumentLinesField;
+}
+
+function invoiceStatusText(status: string | null, error: string | null) {
+  if (error) {
+    return `שגיאה: ${error}`;
+  }
+
+  return status;
 }
 
 function isCustomProductionOrder(order: Order) {
@@ -586,6 +603,15 @@ export function OrdersTableClient({
         <tbody>
           {filteredOrders.map((order) => {
             const initialPaymentStage = firstPaymentStage(order);
+            const showFinalInvoice = initialPaymentStage === "advance_60";
+            const firstInvoiceStatus = invoiceStatusText(
+              order.easyCountStatus,
+              order.easyCountError,
+            );
+            const finalInvoiceStatus = invoiceStatusText(
+              order.easyCountFinalStatus,
+              order.easyCountFinalError,
+            );
             const linkedTaskCount = order.openTaskCount;
             const documentLineDescriptions = displayDocumentLineDescription(order);
             const taskIndicator =
@@ -687,8 +713,78 @@ export function OrdersTableClient({
                         initialPaymentStage === "full_payment"
                           ? displayOrderTotal(order)
                           : displayAdvance60(order),
-                      )}
+                        )}
                     </span>
+                  </div>
+                  <div className="order-invoice-actions">
+                    <div className="order-invoice-actions__item">
+                      <div className="order-invoice-actions__meta">
+                        <strong>חשבונית</strong>
+                        <span>{formatOptionalCurrency(firstInvoiceAmount(order, initialPaymentStage))}</span>
+                        {firstInvoiceStatus ? (
+                          <span
+                            className={
+                              order.easyCountError
+                                ? "order-invoice-actions__error"
+                                : undefined
+                            }
+                          >
+                            {firstInvoiceStatus}
+                          </span>
+                        ) : null}
+                      </div>
+                      <CreateInvoiceButton
+                        recordId={order.id}
+                        invoiceStage="first"
+                        existingDocumentId={order.easyCountDocumentId}
+                        existingDocumentNumber={order.easyCountDocumentNumber}
+                        existingDocumentUrl={order.easyCountDocumentUrl}
+                        requested={order.invoiceReceiptRequested}
+                        createLabel="הפקת חשבונית"
+                        loadingLabel="שולח..."
+                        existingLabel={
+                          order.easyCountDocumentNumber
+                            ? `מס׳ ${order.easyCountDocumentNumber}`
+                            : "הופקה"
+                        }
+                        pendingLabel="נשלחה, ממתין לאוטומציה"
+                      />
+                    </div>
+                    {showFinalInvoice ? (
+                      <div className="order-invoice-actions__item">
+                        <div className="order-invoice-actions__meta">
+                          <strong>יתרה 40%</strong>
+                          <span>{formatOptionalCurrency(order.balance40ByDocumentLinesField)}</span>
+                          {finalInvoiceStatus ? (
+                            <span
+                              className={
+                                order.easyCountFinalError
+                                  ? "order-invoice-actions__error"
+                                  : undefined
+                              }
+                            >
+                              {finalInvoiceStatus}
+                            </span>
+                          ) : null}
+                        </div>
+                        <CreateInvoiceButton
+                          recordId={order.id}
+                          invoiceStage="final_40"
+                          existingDocumentId={order.easyCountFinalDocumentId}
+                          existingDocumentNumber={order.easyCountFinalDocumentNumber}
+                          existingDocumentUrl={order.easyCountFinalDocumentUrl}
+                          requested={order.finalInvoiceReceiptRequested}
+                          createLabel="הפקת חשבונית יתרה"
+                          loadingLabel="שולח..."
+                          existingLabel={
+                            order.easyCountFinalDocumentNumber
+                              ? `מס׳ ${order.easyCountFinalDocumentNumber}`
+                              : "הופקה"
+                          }
+                          pendingLabel="נשלחה, ממתין לאוטומציה"
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 </td>
               </tr>

@@ -1,40 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import type { OrderType, PaymentStage } from "@/lib/types";
-import { DOCUMENT_LINES_WRITE_GUARD_MESSAGE } from "@/lib/safety-guard";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { requestOrderInvoiceAction } from "./actions";
+
+type OrderInvoiceTriggerStage = "first" | "final_40";
 
 type CreateInvoiceButtonProps = {
   recordId: string;
-  orderType: OrderType;
-  paymentStage: PaymentStage;
+  invoiceStage: OrderInvoiceTriggerStage;
   existingDocumentId?: string | null;
+  existingDocumentNumber?: string | null;
   existingDocumentUrl?: string | null;
+  requested?: boolean;
   createLabel: string;
   loadingLabel: string;
   existingLabel: string;
-  writeGuardEnabled?: boolean;
+  pendingLabel: string;
 };
 
 type RequestState = "idle" | "loading" | "success" | "error";
 
 export function CreateInvoiceButton({
   recordId,
-  orderType,
-  paymentStage,
+  invoiceStage,
   existingDocumentId,
+  existingDocumentNumber,
   existingDocumentUrl,
+  requested = false,
   createLabel,
   loadingLabel,
   existingLabel,
-  writeGuardEnabled = true,
+  pendingLabel,
 }: CreateInvoiceButtonProps) {
+  const router = useRouter();
   const [state, setState] = useState<RequestState>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const trimmedRecordId = recordId.trim();
 
-  if (existingDocumentUrl || existingDocumentId) {
+  if (existingDocumentUrl || existingDocumentId || existingDocumentNumber) {
     return (
       <div className="quote-action">
         {existingDocumentUrl ? (
@@ -49,6 +55,19 @@ export function CreateInvoiceButton({
     );
   }
 
+  if (requested) {
+    return (
+      <div className="quote-action">
+        <button className="quote-action__button" type="button" disabled>
+          {createLabel}
+        </button>
+        <span className="quote-action__message" role="status">
+          {pendingLabel}
+        </span>
+      </div>
+    );
+  }
+
   async function handleClick() {
     if (!trimmedRecordId) {
       setState("error");
@@ -59,58 +78,31 @@ export function CreateInvoiceButton({
     setState("loading");
     setMessage(null);
 
-    try {
-      const response = await fetch("/api/easycount/create-invoice", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          record_id: trimmedRecordId,
-          doc_type: "invoice_receipt",
-          payment_stage: paymentStage,
-          invoice_stage: paymentStage,
-          order_type: orderType,
-        }),
-      });
+    startTransition(async () => {
+      try {
+        const result = await requestOrderInvoiceAction({
+          orderId: trimmedRecordId,
+          invoiceStage,
+        });
 
-      const data = (await response.json()) as {
-        success?: boolean;
-        error?: string;
-        details?: unknown;
-      };
+        if (!result.ok) {
+          throw new Error(
+            [result.message, ...(result.errors ?? [])].filter(Boolean).join(" "),
+          );
+        }
 
-      if (!response.ok || !data.success) {
-        const details =
-          typeof data.details === "string" && data.details
-            ? ` ${data.details}`
-            : "";
-        throw new Error(data.error ? `${data.error}.${details}` : "השליחה נכשלה.");
+        setState("success");
+        setMessage("בקשת החשבונית נשלחה לאוטומציית Airtable.");
+        router.refresh();
+      } catch (error) {
+        setState("error");
+        setMessage(
+          error instanceof Error
+            ? `שגיאה בהפקת חשבונית: ${error.message}`
+            : "שגיאה בהפקת חשבונית.",
+        );
       }
-
-      setState("success");
-      setMessage("הבקשה נשלחה לאיזיקאונט. הקישור יתעדכן אחרי ש-Make יסיים.");
-    } catch (error) {
-      setState("error");
-      setMessage(
-        error instanceof Error
-          ? `שגיאה בהפקת חשבונית מס קבלה: ${error.message}`
-          : "שגיאה בהפקת חשבונית מס קבלה.",
-      );
-    }
-  }
-
-  if (writeGuardEnabled) {
-    return (
-      <div className="quote-action">
-        <button className="quote-action__button" type="button" disabled>
-          {createLabel}
-        </button>
-        <span className="quote-action__message">
-          {DOCUMENT_LINES_WRITE_GUARD_MESSAGE}
-        </span>
-      </div>
-    );
+    });
   }
 
   return (
@@ -119,9 +111,9 @@ export function CreateInvoiceButton({
         className="quote-action__button"
         type="button"
         onClick={handleClick}
-        disabled={state === "loading"}
+        disabled={state === "loading" || isPending}
       >
-        {state === "loading" ? loadingLabel : createLabel}
+        {state === "loading" || isPending ? loadingLabel : createLabel}
       </button>
       {message ? (
         <span

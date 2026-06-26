@@ -2,6 +2,7 @@ import "server-only";
 import type {
   CustomProductionStatus,
   DocumentLine,
+  Order,
   OrderType,
 } from "@/lib/types";
 import { selectRecords } from "../client";
@@ -49,6 +50,13 @@ export type UpdateCustomProductionInput = {
   readyAtFactory: boolean;
 };
 
+export type OrderInvoiceTriggerStage = "first" | "final_40";
+
+export type RequestOrderInvoiceTriggerInput = {
+  orderId: string;
+  invoiceStage: OrderInvoiceTriggerStage;
+};
+
 type CreatedOrderFields = {
   fld5tEZDfCloihZh6?: string;
   fldBeIA5vZa5M0TXK?: string;
@@ -79,6 +87,11 @@ type UpdatedCustomProductionFields = {
   fldt9k7oNeFWYX37V?: string | null;
   fld5p9BH4axVPzKwV?: boolean;
   fldtpYU0EOhDmLiD8?: boolean;
+};
+
+type UpdatedOrderInvoiceTriggerFields = {
+  fldUHtJ82z3U2eG6W?: true;
+  fld3R8AuoS5NGj8uK?: true;
 };
 
 type MinimalTaskRecord = {
@@ -349,6 +362,106 @@ function validateInput(input: ReturnType<typeof normalizeInput>) {
   return errors;
 }
 
+function hasFirstInvoiceDocument(order: Order) {
+  return Boolean(
+    order.easyCountDocumentId ||
+      order.easyCountDocumentNumber ||
+      order.easyCountDocumentUrl,
+  );
+}
+
+function hasFinalInvoiceDocument(order: Order) {
+  return Boolean(
+    order.easyCountFinalDocumentId ||
+      order.easyCountFinalDocumentNumber ||
+      order.easyCountFinalDocumentUrl,
+  );
+}
+
+function isFullPaymentOrder(order: Order) {
+  return order.paymentMode === "תשלום מלא";
+}
+
+function isAdvancePaymentOrder(order: Order) {
+  return order.paymentMode === "מקדמה 60%";
+}
+
+function hasLinkedDocumentLines(order: Order) {
+  return order.documentLineRecordIds.length > 0 || order.documentLines.length > 0;
+}
+
+function validateOrderInvoiceTrigger(
+  order: Order,
+  invoiceStage: OrderInvoiceTriggerStage,
+) {
+  const errors: string[] = [];
+
+  if (!hasLinkedDocumentLines(order)) {
+    errors.push("להזמנה אין שורות מסמך מקושרות.");
+  }
+
+  if (!isFullPaymentOrder(order) && !isAdvancePaymentOrder(order)) {
+    errors.push("יש לעדכן בהזמנה תשלום מלא או מקדמה 60%.");
+  }
+
+  if (!order.paymentMethod) {
+    errors.push("יש לעדכן אמצעי תשלום לפני הפקת חשבונית.");
+  }
+
+  if (!Number.isFinite(order.totalByDocumentLinesField) || order.totalByDocumentLinesField <= 0) {
+    errors.push("סה״כ לפי שורות מסמך חסר או לא תקין.");
+  }
+
+  if (invoiceStage === "first") {
+    if (hasFirstInvoiceDocument(order)) {
+      errors.push("כבר קיימת חשבונית להזמנה.");
+    }
+
+    if (order.invoiceReceiptRequested && !hasFirstInvoiceDocument(order)) {
+      errors.push("בקשת החשבונית כבר נשלחה וממתינה לעדכון מאוטומציית Airtable.");
+    }
+
+    const firstInvoiceAmount = isFullPaymentOrder(order)
+      ? order.totalByDocumentLinesField
+      : order.advance60ByDocumentLinesField;
+
+    if (!Number.isFinite(firstInvoiceAmount) || firstInvoiceAmount <= 0) {
+      errors.push(
+        isFullPaymentOrder(order)
+          ? "סכום התשלום המלא לפי שורות מסמך חסר או לא תקין."
+          : "סכום מקדמה 60% לפי שורות מסמך חסר או לא תקין.",
+      );
+    }
+  }
+
+  if (invoiceStage === "final_40") {
+    if (!isAdvancePaymentOrder(order)) {
+      errors.push("חשבונית יתרה זמינה רק להזמנה עם מקדמה 60%.");
+    }
+
+    if (!hasFirstInvoiceDocument(order)) {
+      errors.push("יש להפיק חשבונית ראשונה לפני חשבונית יתרה.");
+    }
+
+    if (hasFinalInvoiceDocument(order)) {
+      errors.push("כבר קיימת חשבונית יתרה להזמנה.");
+    }
+
+    if (order.finalInvoiceReceiptRequested && !hasFinalInvoiceDocument(order)) {
+      errors.push("בקשת חשבונית היתרה כבר נשלחה וממתינה לעדכון מאוטומציית Airtable.");
+    }
+
+    if (
+      !Number.isFinite(order.balance40ByDocumentLinesField) ||
+      order.balance40ByDocumentLinesField <= 0
+    ) {
+      errors.push("יתרת תשלום 40% לפי שורות מסמך חסרה או לא תקינה.");
+    }
+  }
+
+  return errors;
+}
+
 function documentLineFields(
   orderId: string,
   line: ReturnType<typeof normalizeLine>,
@@ -422,6 +535,111 @@ export async function getOrders() {
         (timestampValue(a.createdAt) ?? Number.NEGATIVE_INFINITY)
       );
     });
+}
+
+export async function getOrderById(orderId: string) {
+  const normalizedOrderId = orderId.trim();
+
+  if (!airtableRecordIdPattern.test(normalizedOrderId)) {
+    return null;
+  }
+
+  const [records, documentLines, orderCreationRequests] = await Promise.all([
+    selectRecords<RawOrderFields>(airtableTables.orders, {
+      filterByFormula: `RECORD_ID() = '${normalizedOrderId}'`,
+      returnFieldsByFieldId: true,
+      pageSize: 1,
+    }),
+    getDocumentLines(),
+    getOrderCreationRequests(),
+  ]);
+  const [record] = records;
+
+  if (!record) {
+    return null;
+  }
+
+  return mapOrder(
+    record,
+    documentLines.filter((line) => line.orderIds.includes(normalizedOrderId)),
+    orderCreationRequests.filter((request) =>
+      request.createdOrderIds.includes(normalizedOrderId),
+    ),
+  );
+}
+
+export async function requestOrderInvoiceTrigger(
+  input: RequestOrderInvoiceTriggerInput,
+) {
+  const orderId = input.orderId.trim();
+  const errors: string[] = [];
+
+  if (!airtableRecordIdPattern.test(orderId)) {
+    errors.push("חסר מזהה הזמנה תקין.");
+  }
+
+  if (input.invoiceStage !== "first" && input.invoiceStage !== "final_40") {
+    errors.push("סוג החשבונית אינו תקין.");
+  }
+
+  if (errors.length > 0) {
+    return {
+      ok: false as const,
+      message: "לא ניתן לשלוח בקשת חשבונית.",
+      errors,
+    };
+  }
+
+  const order = await getOrderById(orderId);
+
+  if (!order) {
+    return {
+      ok: false as const,
+      message: "לא נמצאה הזמנה מתאימה.",
+      errors: ["יש לוודא שמזהה ההזמנה קיים ב-Airtable."],
+    };
+  }
+
+  const validationErrors = validateOrderInvoiceTrigger(order, input.invoiceStage);
+
+  if (validationErrors.length > 0) {
+    return {
+      ok: false as const,
+      message: "לא ניתן לשלוח בקשת חשבונית.",
+      errors: validationErrors,
+    };
+  }
+
+  const triggerField =
+    input.invoiceStage === "final_40"
+      ? airtableSchema.fields.orders.finalInvoiceTrigger
+      : airtableSchema.fields.orders.firstInvoiceTrigger;
+
+  try {
+    await updateRecord<UpdatedOrderInvoiceTriggerFields>(airtableTables.orders, orderId, {
+      [triggerField]: true,
+    });
+
+    return {
+      ok: true as const,
+      message:
+        input.invoiceStage === "final_40"
+          ? "בקשת חשבונית היתרה נשלחה לאוטומציית Airtable."
+          : "בקשת החשבונית נשלחה לאוטומציית Airtable.",
+      orderId,
+      updatedFieldId: triggerField,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: "עדכון שדה הפקת החשבונית ב-Airtable נכשל.",
+      errors: [
+        error instanceof Error
+          ? error.message
+          : "אירעה שגיאה לא צפויה בעת עדכון ההזמנה.",
+      ],
+    };
+  }
 }
 
 export async function createStandaloneOrder(input: CreateStandaloneOrderInput) {

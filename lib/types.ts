@@ -273,11 +273,16 @@ export type Order = {
   orderCreationRequestError: string | null;
   totalPrice: number;
   documentLines: DocumentLine[];
+  documentLineRecordIds: string[];
   totalFromDocumentLines: number;
+  totalByDocumentLinesField: number;
   advance60FromDocumentLines: number;
+  advance60ByDocumentLinesField: number;
   balance40FromDocumentLines: number;
+  balance40ByDocumentLinesField: number;
   orderTypeFromDocumentLines: string | null;
   paymentMode: string | null;
+  paymentMethod: string | null;
   advancePaymentAmount: number;
   remainingPaymentAmount: number;
   easyCountDocumentId: string | null;
@@ -291,6 +296,7 @@ export type Order = {
   easyCountFinalStatus: string | null;
   easyCountFinalError: string | null;
   invoiceReceiptRequested: boolean;
+  finalInvoiceReceiptRequested: boolean;
   shortNotes: string | null;
   orderLineIds: string[];
   taskIds: string[];

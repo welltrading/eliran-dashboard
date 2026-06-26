@@ -2,8 +2,10 @@
 
 import {
   createStandaloneOrder,
+  requestOrderInvoiceTrigger,
   updateCustomProduction,
   type CreateStandaloneOrderInput,
+  type RequestOrderInvoiceTriggerInput,
   type UpdateCustomProductionInput,
 } from "@/lib/airtable/services/orders";
 import {
@@ -17,6 +19,7 @@ import {
 } from "@/lib/safety-guard.server";
 
 export async function createStandaloneOrderAction(input: CreateStandaloneOrderInput) {
+
   if (isDocumentLinesWriteGuardEnabled()) {
     return {
       ok: false as const,
@@ -29,11 +32,20 @@ export async function createStandaloneOrderAction(input: CreateStandaloneOrderIn
 }
 
 export async function createOrderTaskAction(input: CreateOrderTaskInput) {
+
   return createOrderTask(input);
 }
 
 export async function updateCustomProductionAction(
   input: UpdateCustomProductionInput,
 ) {
+
   return updateCustomProduction(input);
+}
+
+export async function requestOrderInvoiceAction(
+  input: RequestOrderInvoiceTriggerInput,
+) {
+
+  return requestOrderInvoiceTrigger(input);
 }
