@@ -66,7 +66,6 @@ type CreatedOrderFields = {
   fldFRK1Kz26jE99xR?: string;
   fldMXnAf7Pzg5Vc9F?: string;
   fldPN0eZPJuSJSh8o?: string;
-  fldWzlNdgHiiIzYrl?: string;
   fldUealfvxq803w4h?: string;
 };
 
@@ -133,10 +132,6 @@ const standaloneLineTypes: StandaloneOrderLineType[] = [
 const standardExitLocations = ["חנות", "מחסן"];
 const documentLineSourceFromApp = "נוצרה באפליקציה";
 const activeDocumentLineStatus = "פעילה";
-const paymentStatusByMode: Record<string, string> = {
-  "מקדמה 60%": "שולם 60%",
-  "תשלום מלא": "שולם מלא",
-};
 const customProductionStatuses: CustomProductionStatus[] = [
   "ממתין למדידה",
   "מדידה תואמה",
@@ -268,7 +263,6 @@ function normalizeInput(input: CreateStandaloneOrderInput) {
     address: normalizedText(input.address),
     orderStatus: normalizeSelectValue(input.orderStatus, orderStatuses) ?? "חדש",
     paymentMode,
-    paymentStatus: paymentMode ? paymentStatusByMode[paymentMode] ?? null : null,
     paymentMethod: normalizeSelectValue(input.paymentMethod, paymentMethods),
     notes: normalizedText(input.notes) || null,
     lines: input.lines.map(normalizeLine),
@@ -309,9 +303,6 @@ function validateInput(input: ReturnType<typeof normalizeInput>) {
     errors.push("יש לבחור תשלום מלא או מקדמה 60%.");
   }
 
-  if (!input.paymentStatus) {
-    errors.push("סטטוס תשלום מחושב אינו תקין.");
-  }
 
   if (!input.paymentMethod) {
     errors.push("יש לבחור אמצעי תשלום.");
@@ -662,8 +653,6 @@ export async function createStandaloneOrder(input: CreateStandaloneOrderInput) {
     [airtableSchema.fields.orders.orderType]: orderType,
     [airtableSchema.fields.orders.status]: normalizedInput.orderStatus,
     [airtableSchema.fields.orders.paymentMode]: normalizedInput.paymentMode ?? undefined,
-    [airtableSchema.fields.orders.paymentStatus]:
-      normalizedInput.paymentStatus ?? undefined,
     [airtableSchema.fields.orders.paymentMethod]:
       normalizedInput.paymentMethod ?? undefined,
     [airtableSchema.fields.orders.creationSource]: "Dashboard",

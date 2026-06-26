@@ -141,6 +141,63 @@ function firstInvoiceAmount(order: Order, paymentStage: PaymentStage) {
   return order.advance60ByDocumentLinesField;
 }
 
+function hasFirstInvoiceDocument(order: Order) {
+  return Boolean(
+    order.easyCountDocumentId ||
+      order.easyCountDocumentNumber ||
+      order.easyCountDocumentUrl,
+  );
+}
+
+function hasFinalInvoiceDocument(order: Order) {
+  return Boolean(
+    order.easyCountFinalDocumentId ||
+      order.easyCountFinalDocumentNumber ||
+      order.easyCountFinalDocumentUrl,
+  );
+}
+
+function paymentDisplayStatus(order: Order) {
+  const firstDocumentExists = hasFirstInvoiceDocument(order);
+  const finalDocumentExists = hasFinalInvoiceDocument(order);
+  const isAdvancePayment = order.paymentMode === "מקדמה 60%";
+  const isFullPayment = order.paymentMode === "תשלום מלא";
+
+  if (order.easyCountError || order.easyCountFinalError) {
+    return "שגיאה בהפקה";
+  }
+
+  if (
+    isAdvancePayment &&
+    order.finalInvoiceReceiptRequested &&
+    !finalDocumentExists
+  ) {
+    return "יתרה בהפקה";
+  }
+
+  if (order.invoiceReceiptRequested && !firstDocumentExists) {
+    return "בהפקה";
+  }
+
+  if (!firstDocumentExists && !order.invoiceReceiptRequested) {
+    return "טרם הופקה חשבונית";
+  }
+
+  if (isFullPayment && firstDocumentExists) {
+    return "שולם מלא";
+  }
+
+  if (isAdvancePayment && firstDocumentExists && finalDocumentExists) {
+    return "שולם מלא";
+  }
+
+  if (isAdvancePayment && firstDocumentExists && !finalDocumentExists) {
+    return "שולמה מקדמה 60%";
+  }
+
+  return "טרם הופקה חשבונית";
+}
+
 function invoiceStatusText(status: string | null, error: string | null) {
   if (error) {
     return `שגיאה: ${error}`;
@@ -715,6 +772,7 @@ export function OrdersTableClient({
                           : displayAdvance60(order),
                         )}
                     </span>
+                    <span>{paymentDisplayStatus(order)}</span>
                   </div>
                   <div className="order-invoice-actions">
                     <div className="order-invoice-actions__item">
