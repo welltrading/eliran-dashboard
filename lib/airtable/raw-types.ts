@@ -34,6 +34,7 @@ export type RawInstallerFields = {
 export type RawInstallerTaskFields = {
   fld9pZpcEyipF5teB?: unknown;
   fldAP5bP6n8okIqec?: unknown;
+  fldJQBgJQDdtQFvML?: unknown;
   fldtSaIGqknI4t1IM?: unknown;
   fld8xgcv4HEeW2NYF?: unknown;
   fld8IAHnls7oZUMOC?: unknown;

@@ -86,6 +86,7 @@ export type PendingPaymentApprovalTask = {
     filename?: string;
     thumbnailUrl?: string;
   }>;
+  orderId: string | null;
   orderNumber: string | null;
   taskType: string | null;
   installerId: string;

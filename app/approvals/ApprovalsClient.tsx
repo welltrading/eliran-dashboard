@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { PendingPaymentApprovalTask } from "@/lib/types";
@@ -181,7 +182,15 @@ export function ApprovalsClient({ tasks }: ApprovalsClientProps) {
                   </td>
                   <td>{task.phone ?? "-"}</td>
                   <td className="task-notes">{task.address ?? "-"}</td>
-                  <td>{task.orderNumber ?? "-"}</td>
+                  <td>
+                    {task.orderId && task.orderNumber ? (
+                      <Link href={{ pathname: "/orders", query: { orderId: task.orderId } }}>
+                        {task.orderNumber}
+                      </Link>
+                    ) : (
+                      task.orderNumber ?? "-"
+                    )}
+                  </td>
                   <td>{task.taskType ?? "-"}</td>
                   <td>{task.installerName}</td>
                   <td>

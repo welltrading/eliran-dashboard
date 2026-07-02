@@ -26,14 +26,22 @@ import type {
   RawInstallerMonthlyPaymentFields,
   RawInstallerRateFields,
   RawInstallerTaskFields,
+  RawOrderFields,
 } from "../raw-types";
 import { createRecord, updateRecord } from "../write-client";
 
 const INSTALLERS_TABLE_ID = "tblNj2W8WJWbeG1sl";
 const TASKS_TABLE_ID = "tblsodUowDPPiOcCk";
+const ORDERS_TABLE_ID = "tblJYbxBXWUkAoI7m";
 const APPROVALS_TABLE_ID = "tbl6z2mmkNpEFI6jx";
 const RATES_TABLE_ID = "tbl4guJMDoluPnHLD";
 const INSTALLER_MONTHLY_PAYMENTS_TABLE_ID = "tbl614tWbo2VrpS8d";
+const APPROVAL_ORDER_DISPLAY_FIELDS = [
+  "fldDrP4MqsxV6EtJd",
+  "fldDyAvpomUhSkvKw",
+  "fldlqpov0VVFGts1M",
+  "fldYd2ZBbEfcqClqr",
+];
 
 type AirtableRecord<TFields> = {
   id: string;
@@ -54,6 +62,13 @@ type MonthlyPaymentAccumulator = {
   installerName: string;
   details: InstallerMonthlyPaymentDetail[];
   totalAmount: number;
+};
+
+type ApprovalTaskOrderDisplay = {
+  orderNumber: string | null;
+  customerName: string | null;
+  phone: string | null;
+  address: string | null;
 };
 
 type ApprovalPaymentFields = {
@@ -354,13 +369,27 @@ function buildTaskById(tasks: AirtableRecord<RawInstallerTaskFields>[]) {
   return new Map(tasks.map((task) => [task.id, task]));
 }
 
+function mapApprovalTaskOrderDisplay(
+  order: AirtableRecord<RawOrderFields>,
+): ApprovalTaskOrderDisplay {
+  return {
+    orderNumber: nullableTextValue(order.fields.fldDrP4MqsxV6EtJd),
+    customerName: nullableTextValue(order.fields.fldDyAvpomUhSkvKw),
+    phone: nullableTextValue(order.fields.fldlqpov0VVFGts1M),
+    address: nullableTextValue(order.fields.fldYd2ZBbEfcqClqr),
+  };
+}
+
 function mapPendingPaymentApprovalTask(
   task: AirtableRecord<RawInstallerTaskFields>,
   installerById: Map<string, string>,
+  orderById: Map<string, ApprovalTaskOrderDisplay>,
   approvalsByTaskId: Map<string, AirtableRecord<RawExecutionApprovalFields>[]>,
 ): PendingPaymentApprovalTask | null {
   const fields = task.fields;
   const installerId = linkedRecordIds(fields.fldtSaIGqknI4t1IM)[0];
+  const orderId = linkedRecordIds(fields.fldJQBgJQDdtQFvML)[0] ?? null;
+  const order = orderId ? orderById.get(orderId) ?? null : null;
 
   if (!booleanValue(fields.fld00gbAzyZVvDWOt) || !installerId) {
     return null;
@@ -380,11 +409,12 @@ function mapPendingPaymentApprovalTask(
   return {
     id: task.id,
     executionDate: nullableTextValue(fields.fld7wFWvaROfYEQ8B),
-    customerName: taskCustomerName(fields),
-    phone: nullableTextValue(fields.fld6yO2AJBtvihM9W),
-    address: nullableTextValue(fields.fldzHUUvieCC7sZqz),
+    customerName: order ? order.customerName : taskCustomerName(fields),
+    phone: order ? order.phone : nullableTextValue(fields.fld6yO2AJBtvihM9W),
+    address: order ? order.address : nullableTextValue(fields.fldzHUUvieCC7sZqz),
     completionImages: [],
-    orderNumber: firstListText(fields.fldJktpQOU9RRgy1t),
+    orderId,
+    orderNumber: order?.orderNumber ?? firstListText(fields.fldJktpQOU9RRgy1t),
     taskType: taskTypeLabel(fields),
     installerId,
     installerName: installerById.get(installerId) ?? "ללא שם מתקין",
@@ -999,13 +1029,18 @@ export async function createInstaller(
 }
 
 export async function getPendingPaymentApprovalTasks() {
-  const [taskRecords, installerRecords, approvalRecords] = await Promise.all([
+  const [taskRecords, installerRecords, orderRecords, approvalRecords] = await Promise.all([
     selectRecords<RawInstallerTaskFields>(TASKS_TABLE_ID, {
       cache: "no-store",
       returnFieldsByFieldId: true,
     }),
     selectRecords<RawInstallerFields>(INSTALLERS_TABLE_ID, {
       cache: "no-store",
+      returnFieldsByFieldId: true,
+    }),
+    selectRecords<RawOrderFields>(ORDERS_TABLE_ID, {
+      cache: "no-store",
+      fields: APPROVAL_ORDER_DISPLAY_FIELDS,
       returnFieldsByFieldId: true,
     }),
     selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
@@ -1020,11 +1055,19 @@ export async function getPendingPaymentApprovalTasks() {
       textValue(record.fields.fldOSaSnJIAr43Btv) || textValue(record.fields["שם מתקין"]),
     ]),
   );
+  const orderById = new Map(
+    orderRecords.map((record) => [record.id, mapApprovalTaskOrderDisplay(record)]),
+  );
   const approvalsByTaskId = buildApprovalsByTaskId(approvalRecords);
 
   return taskRecords
     .map((task) =>
-      mapPendingPaymentApprovalTask(task, installerById, approvalsByTaskId),
+      mapPendingPaymentApprovalTask(
+        task,
+        installerById,
+        orderById,
+        approvalsByTaskId,
+      ),
     )
     .filter((task): task is PendingPaymentApprovalTask => Boolean(task))
     .sort((a, b) => {
@@ -1497,7 +1540,7 @@ export async function markInstallerMonthlyPaymentPaid(input: {
 }
 
 export async function getPaymentReliabilityControlData(): Promise<PaymentReliabilityControlData> {
-  const [approvalRecords, taskRecords, installerRecords] = await Promise.all([
+  const [approvalRecords, taskRecords, installerRecords, orderRecords] = await Promise.all([
     selectRecords<RawExecutionApprovalFields>(APPROVALS_TABLE_ID, {
       cache: "no-store",
       returnFieldsByFieldId: true,
@@ -1510,6 +1553,11 @@ export async function getPaymentReliabilityControlData(): Promise<PaymentReliabi
       cache: "no-store",
       returnFieldsByFieldId: true,
     }),
+    selectRecords<RawOrderFields>(ORDERS_TABLE_ID, {
+      cache: "no-store",
+      fields: APPROVAL_ORDER_DISPLAY_FIELDS,
+      returnFieldsByFieldId: true,
+    }),
   ]);
 
   const installerById = new Map(
@@ -1517,6 +1565,9 @@ export async function getPaymentReliabilityControlData(): Promise<PaymentReliabi
       record.id,
       textValue(record.fields.fldOSaSnJIAr43Btv) || textValue(record.fields["שם מתקין"]),
     ]),
+  );
+  const orderById = new Map(
+    orderRecords.map((record) => [record.id, mapApprovalTaskOrderDisplay(record)]),
   );
   const taskById = buildTaskById(taskRecords);
   const approvalsByTaskId = buildApprovalsByTaskId(approvalRecords);
@@ -1547,7 +1598,12 @@ export async function getPaymentReliabilityControlData(): Promise<PaymentReliabi
   const duplicateTaskApprovals = buildDuplicateTaskApprovalIssues(approvalsByTaskId);
   const pendingApprovalTasks = taskRecords
     .map((task) =>
-      mapPendingPaymentApprovalTask(task, installerById, approvalsByTaskId),
+      mapPendingPaymentApprovalTask(
+        task,
+        installerById,
+        orderById,
+        approvalsByTaskId,
+      ),
     )
     .filter((task): task is PendingPaymentApprovalTask => Boolean(task));
   const tasksWithoutRate = taskRecords
